@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:bun.sh)",
+      "Bash(bun test:*)",
+      "WebSearch",
+      "WebFetch(domain:www.npmjs.com)",
+      "Bash(bun run build:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

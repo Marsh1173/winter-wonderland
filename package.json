@@ -9,8 +9,12 @@
     "start": "NODE_ENV=production bun src/server/index.tsx"
   },
   "dependencies": {
+    "@react-three/drei": "^10.7.6",
+    "@react-three/fiber": "^9.4.0",
+    "cannon-es": "^0.20.0",
     "react": "^19",
-    "react-dom": "^19"
+    "react-dom": "^19",
+    "three": "^0.181.0"
   },
   "devDependencies": {
     "@types/react": "^19",

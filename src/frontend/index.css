@@ -1,0 +1,18 @@
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap');
+
+* {
+  color: white;
+}
+
+body {
+  margin: 0px;
+  padding: 0px;
+  background-color: #191922;
+  overflow: hidden;
+  font-family: Fredoka, sans-serif;
+}
+
+canvas {
+  width: 100vw;
+  height: 100vh;
+}

@@ -2,11 +2,14 @@ export class Node {
   public parent: Node | undefined = undefined;
 
   private readonly children_inner: Node[] = [];
+
+  constructor(public name: string) {}
+
+  // MARK: Children
+
   public get children(): ReadonlyArray<Node> {
     return this.children_inner;
   }
-
-  constructor(public name: string) {}
 
   public add_child(child: Node) {
     // Cannot add a node as a child if it already has a parent
@@ -38,6 +41,8 @@ export class Node {
     child.parent = undefined;
   }
 
+  // MARK: Path
+
   /**
    * Gets this node's unique path
    */
@@ -51,6 +56,8 @@ export class Node {
     return path;
   }
 
+  // MARK: _ready()
+
   private _ready_inner(): void {
     this._ready();
 
@@ -62,7 +69,9 @@ export class Node {
    */
   public _ready(): void {}
 
-  protected _process_inner(delta: number): void {
+  // MARK: _process()
+
+  public _process_inner(delta: number): void {
     this._process(delta);
 
     for (const child of this.children) {
@@ -72,4 +81,43 @@ export class Node {
   /** This method is meant to be overridden by inheriting classes
    */
   public _process(delta: number): void {}
+
+  // MARK: _physics_process()
+
+  public _physics_process_inner(delta: number): void {
+    this._physics_process(delta);
+
+    for (const child of this.children) {
+      child._physics_process_inner(delta);
+    }
+  }
+  /** This method is meant to be overridden by inheriting classes
+   */
+  public _physics_process(delta: number): void {}
+
+  // MARK: _enter_tree()
+
+  public _enter_tree_inner(): void {
+    this._enter_tree();
+
+    for (const child of this.children) {
+      child._enter_tree_inner();
+    }
+  }
+  /** This method is meant to be overridden by inheriting classes
+   */
+  public _enter_tree(): void {}
+
+  // MARK: _exit_tree()
+
+  public _exit_tree_inner(): void {
+    this._exit_tree();
+
+    for (const child of this.children) {
+      child._exit_tree_inner();
+    }
+  }
+  /** This method is meant to be overridden by inheriting classes
+   */
+  public _exit_tree(): void {}
 }

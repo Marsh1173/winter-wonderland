@@ -11,6 +11,6 @@ export class Node2D extends Node {
   constructor(name: string, props: Node2DProps) {
     super(name);
 
-    this.position = props.position ?? { x: 0, y: 0 };
+    this.position = props.position || { x: 0, y: 0 };
   }
 }
