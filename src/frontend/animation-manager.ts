@@ -85,18 +85,6 @@ export class AnimationManager {
     const idle_threshold = 0.5;
     const falling_threshold = -0.5;
 
-    // Diagnostic logging (1% sample rate to avoid spam)
-    if (Math.random() < 0.01) {
-      console.log('[Animation State]', {
-        current_state: this.current_state,
-        is_grounded,
-        horizontal_velocity: horizontal_velocity.toFixed(2),
-        vertical_velocity: vertical_velocity.toFixed(2),
-        was_grounded: this.was_grounded,
-        falling: vertical_velocity < falling_threshold,
-      });
-    }
-
     // Only trigger jump animation when transitioning from grounded to airborne
     if (this.was_grounded && !is_grounded) {
       this.play_jump();

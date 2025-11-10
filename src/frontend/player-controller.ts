@@ -4,40 +4,40 @@ import { InputManager } from "./input-manager";
 import { CameraController } from "./camera-controller";
 import { PhysicsManager } from "./physics-manager";
 import { AnimationManager } from "./animation-manager";
+import { GroundChecker } from "./ground-checker";
 
 export class PlayerController {
   private player_body: CANNON.Body;
   private character_model: THREE.Group;
-  private physics_manager: PhysicsManager;
   private input_manager: InputManager;
   private camera_controller: CameraController;
   private animation_manager: AnimationManager;
+  private ground_checker: GroundChecker;
 
   private movement_speed = 5;
-  private jump_force = 15;
-  private is_grounded = false;
+  private jump_speed = 8; // Velocity to give player when jumping
   private target_rotation = 0;
   private rotation_smoothing = 0.1;
-  private player_radius = 0.5;
+  private space_was_pressed = false; // Track if space was pressed in previous frame
 
   constructor(
     player_body: CANNON.Body,
     character_model: THREE.Group,
-    physics_manager: PhysicsManager,
+    _physics_manager: PhysicsManager,
     input_manager: InputManager,
     camera_controller: CameraController,
-    animation_manager: AnimationManager
+    animation_manager: AnimationManager,
+    world: CANNON.World
   ) {
     this.player_body = player_body;
     this.character_model = character_model;
-    this.physics_manager = physics_manager;
     this.input_manager = input_manager;
     this.camera_controller = camera_controller;
     this.animation_manager = animation_manager;
+    this.ground_checker = new GroundChecker(player_body, world);
   }
 
   update(): void {
-    this.check_grounded();
     this.handle_jump();
     this.update_movement();
     this.update_rotation();
@@ -45,11 +45,15 @@ export class PlayerController {
   }
 
   private handle_jump(): void {
-    if (this.input_manager.is_key_pressed(" ") && this.is_grounded) {
-      this.player_body.applyLocalImpulse(new CANNON.Vec3(0, this.jump_force, 0), new CANNON.Vec3(0, 0, 0));
-      // Force airborne state immediately to ensure jump animation triggers
-      this.is_grounded = false;
+    const space_is_pressed = this.input_manager.is_key_pressed(" ");
+
+    // Only jump if space was just pressed (transition from not pressed to pressed)
+    if (space_is_pressed && !this.space_was_pressed && this.ground_checker.is_grounded()) {
+      // Set Y velocity directly for reliable, consistent jumps
+      this.player_body.velocity.y = this.jump_speed;
     }
+
+    this.space_was_pressed = space_is_pressed;
   }
 
   private update_movement(): void {
@@ -86,45 +90,12 @@ export class PlayerController {
     this.character_model.rotation.y += shortest_angle * this.rotation_smoothing;
   }
 
-  private check_grounded(): void {
-    const ray_start = new CANNON.Vec3(
-      this.player_body.position.x,
-      this.player_body.position.y,
-      this.player_body.position.z
-    );
-
-    const ray_end = new CANNON.Vec3(
-      this.player_body.position.x,
-      this.player_body.position.y - this.player_radius - 0.1, // Well below ground
-      this.player_body.position.z
-    );
-
-    const ray_result = this.physics_manager.raycast_environment(ray_start, ray_end);
-    let raycast_hit = ray_result.hasHit;
-
-    // Additional check: not grounded if moving upward (even slightly)
-    const moving_up = this.player_body.velocity.y > 0.05;
-
-    this.is_grounded = raycast_hit && !moving_up;
-
-    // Diagnostic logging (1% sample rate to avoid spam)
-    if (Math.random() < 0.01) {
-      console.log("[Grounded Check]", {
-        raycast_hit,
-        moving_up,
-        velocity_y: this.player_body.velocity.y.toFixed(2),
-        is_grounded: this.is_grounded,
-        position_y: this.player_body.position.y.toFixed(2),
-      });
-    }
-  }
-
   private update_animations(): void {
     const velocity = this.player_body.velocity;
     const horizontal_velocity = Math.sqrt(velocity.x ** 2 + velocity.z ** 2);
     const vertical_velocity = velocity.y;
 
-    this.animation_manager.update_state(horizontal_velocity, vertical_velocity, this.is_grounded);
+    this.animation_manager.update_state(horizontal_velocity, vertical_velocity, this.ground_checker.is_grounded());
   }
 
   sync_position(): void {

@@ -154,7 +154,8 @@ export class GameScene {
       this.physics_manager,
       this.input_manager,
       this.camera_controller,
-      animation_manager!
+      animation_manager!,
+      this.physics_manager.get_world()
     );
   }
 

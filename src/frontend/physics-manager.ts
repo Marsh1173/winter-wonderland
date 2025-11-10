@@ -64,6 +64,10 @@ export class PhysicsManager {
     return this.ground_body;
   }
 
+  get_world(): CANNON.World {
+    return this.world;
+  }
+
   step(dt: number): void {
     this.world.step(1 / 60, dt, 3);
   }
@@ -75,10 +79,10 @@ export class PhysicsManager {
   }
 
   // Raycast that hits only environment (skips player)
+  // Note: No longer used, kept for reference. Ground detection now uses contact normals.
   raycast_environment(start: CANNON.Vec3, end: CANNON.Vec3): CANNON.RaycastResult {
     const result = new CANNON.RaycastResult();
 
-    // Do a standard raycast
     this.world.raycastClosest(
       start,
       end,
@@ -88,22 +92,6 @@ export class PhysicsManager {
       },
       result
     );
-
-    // Debug logging
-    if (Math.random() < 0.01) {
-      console.log("[Raycast Debug]", {
-        start_y: start.y.toFixed(2),
-        end_y: end.y.toFixed(2),
-        has_hit: result.hasHit,
-        hit_body: result.body ? result.body.id : "nothing",
-        is_ground: result.body === this.ground_body,
-      });
-    }
-
-    // Manually filter: reject if it hit the player body, accept any other hit (ground/environment)
-    // if (result.body === this.player_body) {
-    //   result.reset();
-    // }
 
     return result;
   }

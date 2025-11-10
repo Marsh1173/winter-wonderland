@@ -5,7 +5,8 @@
       "Bash(bun test:*)",
       "WebSearch",
       "WebFetch(domain:www.npmjs.com)",
-      "Bash(bun run build:*)"
+      "Bash(bun run build:*)",
+      "mcp__ide__getDiagnostics"
     ],
     "deny": [],
     "ask": []
