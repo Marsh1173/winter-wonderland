@@ -200,8 +200,7 @@ export class GameScene {
 
     const player_body = this.physics_manager.get_player_body();
     if (player_body) {
-      this.camera_controller.update(player_body, this.input_manager.get_mouse_delta());
-      this.input_manager.reset_mouse_delta();
+      this.camera_controller.update(player_body);
     }
 
     if (this.mixer) {
