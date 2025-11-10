@@ -1,11 +1,11 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { get_character_model_url } from "@/model/characters";
-import { PhysicsManager } from "./physics-manager";
-import { InputManager } from "./input-manager";
-import { CameraController } from "./camera-controller";
+import { PhysicsManager } from "../physics/physics-manager";
+import { InputManager } from "../managers/input-manager";
+import { CameraController } from "../managers/camera-controller";
 import { PlayerController } from "./player-controller";
-import { AnimationManager } from "./animation-manager";
+import { AnimationManager } from "../animation/animation-manager";
 
 export class GameScene {
   private canvas: HTMLCanvasElement;
@@ -22,7 +22,6 @@ export class GameScene {
   private mixer: THREE.AnimationMixer | null = null;
   private animation_clips: THREE.AnimationClip[] = [];
 
-  // Managers
   private physics_manager: PhysicsManager;
   private input_manager: InputManager;
   private camera_controller: CameraController;
@@ -74,11 +73,9 @@ export class GameScene {
   }
 
   private setup_lights(): void {
-    // Ambient light
     const ambient = new THREE.AmbientLight(0xffffff, 0.6);
     this.scene.add(ambient);
 
-    // Directional light (sun)
     const directional = new THREE.DirectionalLight(0xffffff, 0.8);
     directional.position.set(5, 10, 5);
     directional.castShadow = true;
@@ -160,7 +157,6 @@ export class GameScene {
   }
 
   start(): void {
-    console.log("Starting game scene render loop");
     this.animate();
   }
 
@@ -193,7 +189,6 @@ export class GameScene {
       cancelAnimationFrame(this.animation_id);
       this.animation_id = null;
     }
-    console.log("Stopped game scene render loop");
   }
 
   private on_window_resize = (): void => {

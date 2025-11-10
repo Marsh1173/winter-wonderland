@@ -1,9 +1,9 @@
-import { StrictMode, useState } from "react";
+import { useState } from "react";
 import { createRoot } from "react-dom/client";
-import { LoadingState } from "./LoadingState";
-import { CharacterSelectState } from "./CharacterSelectState";
-import { GameState } from "./GameState";
-import type { PlayerData } from "./websocket-client";
+import { LoadingState } from "./ui/loading-state";
+import { CharacterSelectState } from "./ui/character-select-state";
+import { GameState } from "./ui/game-state";
+import type { PlayerData } from "./networking/websocket-client";
 import "./index.css";
 
 type AppState =
@@ -15,8 +15,6 @@ function App() {
   const [app_state, set_app_state] = useState<AppState>({ type: "loading" });
 
   return (
-    // <StrictMode>
-    // </StrictMode>
     <>
       {app_state.type === "loading" && (
         <LoadingState on_loading_complete={() => set_app_state({ type: "character-select" })} />

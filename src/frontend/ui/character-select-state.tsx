@@ -1,5 +1,5 @@
 import { CHARACTERS, get_character_preview_url } from "@/model/characters";
-import { connect_to_server, type PlayerData } from "./websocket-client";
+import { connect_to_server, type PlayerData } from "../networking/websocket-client";
 import React, { useState } from "react";
 
 interface CharacterSelectStateProps {

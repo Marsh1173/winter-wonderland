@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
-import type { PlayerData } from "./websocket-client";
-import { GameScene } from "./game-scene";
-import { ChatBox } from "./chat/chat-box";
+import type { PlayerData } from "../networking/websocket-client";
+import { GameScene } from "../game/game-scene";
+import { ChatBox } from "../chat/chat-box";
 
 interface GameStateProps {
   ws: WebSocket;
@@ -43,10 +43,7 @@ export const GameState: React.FC<GameStateProps> = ({ ws, player_data, on_discon
         const scene = new GameScene(canvas_ref.current!, player_data.character_id);
         game_scene_ref.current = scene;
 
-        // Load character model
         await scene.load_character();
-
-        // Start render loop
         scene.start();
         setLoading(false);
       } catch (err) {

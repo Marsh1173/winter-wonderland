@@ -24,7 +24,6 @@ export class AnimationManager {
   }
 
   private cache_actions(): void {
-    // Pre-create all animation actions upfront to avoid THREE.js reuse issues
     for (const [name, clip] of this.animations_map) {
       const action = this.mixer.clipAction(clip);
       this.actions_cache.set(name, action);
@@ -43,12 +42,10 @@ export class AnimationManager {
     const next_action = this.find_action(names);
     if (!next_action) return;
 
-    // Configure the action
     next_action.loop = loop ? THREE.LoopRepeat : THREE.LoopOnce;
-    next_action.clampWhenFinished = !loop; // Keep final pose for non-looping animations
-    next_action.reset(); // Clear any previous state
+    next_action.clampWhenFinished = !loop;
+    next_action.reset();
 
-    // Smooth transition from current action to next
     if (this.current_action && this.current_action !== next_action) {
       this.current_action.crossFadeTo(next_action, this.transition_duration, true);
     }
@@ -85,17 +82,13 @@ export class AnimationManager {
     const idle_threshold = 0.5;
     const falling_threshold = -0.5;
 
-    // Only trigger jump animation when transitioning from grounded to airborne
     if (this.was_grounded && !is_grounded) {
       this.play_jump();
     } else if (!is_grounded) {
-      // Airborne - transition to fall if falling fast enough
       if (vertical_velocity < falling_threshold) {
         this.play_fall();
       }
-      // Otherwise keep playing jump animation
     } else if (is_grounded) {
-      // While grounded, switch between walk and idle based on movement
       if (Math.abs(horizontal_velocity) > idle_threshold) {
         this.play_walk();
       } else {

@@ -15,24 +15,21 @@ export class CameraController {
   }
 
   private update_position(player_body: CANNON.Body): void {
-    const player_pos = new THREE.Vector3(player_body.position.x, player_body.position.y, player_body.position.z);
+    const player_pos = new THREE.Vector3(
+      player_body.position.x,
+      player_body.position.y,
+      player_body.position.z
+    );
 
-    // Fixed camera offset - positioned behind and above player at 45 degree angle
     const camera_offset = new THREE.Vector3(0, this.camera_height, this.camera_distance);
-
     this.camera.position.copy(player_pos).add(camera_offset);
-
-    // Look at player position + slight height offset for better framing
     this.camera.lookAt(player_pos.x, player_pos.y, player_pos.z);
   }
 
-  // Screen-relative directions for fixed isometric camera
-  // W moves away from camera (toward negative Z)
   get_forward_direction(): THREE.Vector3 {
     return new THREE.Vector3(0, 0, -1);
   }
 
-  // D moves to the right (positive X)
   get_right_direction(): THREE.Vector3 {
     return new THREE.Vector3(1, 0, 0);
   }

@@ -1,10 +1,10 @@
 import * as THREE from "three";
 import * as CANNON from "cannon-es";
-import { InputManager } from "./input-manager";
-import { CameraController } from "./camera-controller";
-import { PhysicsManager } from "./physics-manager";
-import { AnimationManager } from "./animation-manager";
-import { GroundChecker } from "./ground-checker";
+import { InputManager } from "../managers/input-manager";
+import { CameraController } from "../managers/camera-controller";
+import { PhysicsManager } from "../physics/physics-manager";
+import { AnimationManager } from "../animation/animation-manager";
+import { GroundChecker } from "../physics/ground-checker";
 
 export class PlayerController {
   private player_body: CANNON.Body;
@@ -15,10 +15,10 @@ export class PlayerController {
   private ground_checker: GroundChecker;
 
   private movement_speed = 5;
-  private jump_speed = 8; // Velocity to give player when jumping
+  private jump_speed = 8;
   private target_rotation = 0;
   private rotation_smoothing = 0.1;
-  private space_was_pressed = false; // Track if space was pressed in previous frame
+  private space_was_pressed = false;
 
   constructor(
     player_body: CANNON.Body,
@@ -47,9 +47,7 @@ export class PlayerController {
   private handle_jump(): void {
     const space_is_pressed = this.input_manager.is_key_pressed(" ");
 
-    // Only jump if space was just pressed (transition from not pressed to pressed)
     if (space_is_pressed && !this.space_was_pressed && this.ground_checker.is_grounded()) {
-      // Set Y velocity directly for reliable, consistent jumps
       this.player_body.velocity.y = this.jump_speed;
     }
 

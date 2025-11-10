@@ -9,7 +9,6 @@ export const LoadingState: React.FC<LoadingStateProps> = ({ on_loading_complete 
   const [progress, setProgress] = useState(0);
 
   useEffect(() => {
-    // Simulate loading progress
     const interval = setInterval(() => {
       setProgress((prev) => {
         const next = prev + Math.random() * 30;
@@ -41,7 +40,6 @@ export const LoadingState: React.FC<LoadingStateProps> = ({ on_loading_complete 
           <p style={styles.percentage}>{Math.round(Math.min(progress, 100))}%</p>
         </div>
       </div>
-      {/** PRELOAD CHARACTER PREVIEWS */}
       {CHARACTERS.map((character) => {
         return <link rel="preload" as="image" key={character.id} href={get_character_preview_url(character)}></link>;
       })}
