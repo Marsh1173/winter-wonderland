@@ -14,10 +14,11 @@ export class PlayerController {
   private animation_manager: AnimationManager;
 
   private movement_speed = 5;
-  private jump_force = 5;
+  private jump_force = 15;
   private is_grounded = false;
   private target_rotation = 0;
   private rotation_smoothing = 0.1;
+  private player_radius = 0.5;
 
   constructor(
     player_body: CANNON.Body,
@@ -36,19 +37,18 @@ export class PlayerController {
   }
 
   update(): void {
+    this.check_grounded();
     this.handle_jump();
     this.update_movement();
     this.update_rotation();
-    this.check_grounded();
     this.update_animations();
   }
 
   private handle_jump(): void {
     if (this.input_manager.is_key_pressed(" ") && this.is_grounded) {
-      this.player_body.applyLocalImpulse(
-        new CANNON.Vec3(0, this.jump_force, 0),
-        new CANNON.Vec3(0, 0, 0)
-      );
+      this.player_body.applyLocalImpulse(new CANNON.Vec3(0, this.jump_force, 0), new CANNON.Vec3(0, 0, 0));
+      // Force airborne state immediately to ensure jump animation triggers
+      this.is_grounded = false;
     }
   }
 
@@ -92,14 +92,31 @@ export class PlayerController {
       this.player_body.position.y,
       this.player_body.position.z
     );
+
     const ray_end = new CANNON.Vec3(
       this.player_body.position.x,
-      this.player_body.position.y - 1,
+      this.player_body.position.y - this.player_radius - 0.1, // Well below ground
       this.player_body.position.z
     );
 
-    const ray_result = this.physics_manager.raycast_closest(ray_start, ray_end);
-    this.is_grounded = ray_result.hasHit;
+    const ray_result = this.physics_manager.raycast_environment(ray_start, ray_end);
+    let raycast_hit = ray_result.hasHit;
+
+    // Additional check: not grounded if moving upward (even slightly)
+    const moving_up = this.player_body.velocity.y > 0.05;
+
+    this.is_grounded = raycast_hit && !moving_up;
+
+    // Diagnostic logging (1% sample rate to avoid spam)
+    if (Math.random() < 0.01) {
+      console.log("[Grounded Check]", {
+        raycast_hit,
+        moving_up,
+        velocity_y: this.player_body.velocity.y.toFixed(2),
+        is_grounded: this.is_grounded,
+        position_y: this.player_body.position.y.toFixed(2),
+      });
+    }
   }
 
   private update_animations(): void {
@@ -107,7 +124,7 @@ export class PlayerController {
     const horizontal_velocity = Math.sqrt(velocity.x ** 2 + velocity.z ** 2);
     const vertical_velocity = velocity.y;
 
-    this.animation_manager.update_state(horizontal_velocity, vertical_velocity);
+    this.animation_manager.update_state(horizontal_velocity, vertical_velocity, this.is_grounded);
   }
 
   sync_position(): void {

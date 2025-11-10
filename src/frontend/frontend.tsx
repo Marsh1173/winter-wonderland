@@ -15,7 +15,9 @@ function App() {
   const [app_state, set_app_state] = useState<AppState>({ type: "loading" });
 
   return (
-    <StrictMode>
+    // <StrictMode>
+    // </StrictMode>
+    <>
       {app_state.type === "loading" && (
         <LoadingState on_loading_complete={() => set_app_state({ type: "character-select" })} />
       )}
@@ -33,7 +35,7 @@ function App() {
           on_disconnect={() => set_app_state({ type: "character-select" })}
         />
       )}
-    </StrictMode>
+    </>
   );
 }
 

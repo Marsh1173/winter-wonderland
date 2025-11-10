@@ -124,10 +124,6 @@ export class GameScene {
           if (gltf.animations.length > 0) {
             this.animation_clips = gltf.animations;
             this.mixer = new THREE.AnimationMixer(this.character_model);
-            const stand_action = this.find_stand_animation(gltf.animations);
-            if (stand_action) {
-              stand_action.play();
-            }
           }
 
           this.scene.add(this.character_model);
@@ -165,25 +161,6 @@ export class GameScene {
   start(): void {
     console.log("Starting game scene render loop");
     this.animate();
-  }
-
-  private find_stand_animation(animations: THREE.AnimationClip[]): THREE.AnimationAction | null {
-    // Look for stand, idle, or default animations
-    const animation_names = ["Stand", "Idle", "idle", "stand"];
-
-    for (const name of animation_names) {
-      const clip = THREE.AnimationClip.findByName(animations, name);
-      if (clip && this.mixer) {
-        return this.mixer.clipAction(clip);
-      }
-    }
-
-    // If no specific animation found, use the first one
-    if (animations.length > 0 && this.mixer) {
-      return this.mixer.clipAction(animations[0]);
-    }
-
-    return null;
   }
 
   private animate = (): void => {
