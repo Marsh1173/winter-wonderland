@@ -13,12 +13,15 @@ export class PlayerController {
   private camera_controller: CameraController;
   private animation_manager: AnimationManager;
   private ground_checker: GroundChecker;
+  private on_action: ((action: string, position: CANNON.Vec3, rotation: number, velocity: CANNON.Vec3, direction?: CANNON.Vec3) => void) | null;
 
   private movement_speed = 5;
   private jump_speed = 8;
   private target_rotation = 0;
   private rotation_smoothing = 0.1;
   private space_was_pressed = false;
+  private last_move_sent_time = 0;
+  private move_send_interval = 100; // Send move action at most every 100ms
 
   constructor(
     player_body: CANNON.Body,
@@ -27,7 +30,8 @@ export class PlayerController {
     input_manager: InputManager,
     camera_controller: CameraController,
     animation_manager: AnimationManager,
-    world: CANNON.World
+    world: CANNON.World,
+    on_action?: (action: string, position: CANNON.Vec3, rotation: number, velocity: CANNON.Vec3, direction?: CANNON.Vec3) => void
   ) {
     this.player_body = player_body;
     this.character_model = character_model;
@@ -35,6 +39,7 @@ export class PlayerController {
     this.camera_controller = camera_controller;
     this.animation_manager = animation_manager;
     this.ground_checker = new GroundChecker(player_body, world);
+    this.on_action = on_action || null;
   }
 
   update(): void {
@@ -49,6 +54,15 @@ export class PlayerController {
 
     if (space_is_pressed && !this.space_was_pressed && this.ground_checker.is_grounded()) {
       this.player_body.velocity.y = this.jump_speed;
+
+      if (this.on_action) {
+        this.on_action(
+          "jump",
+          this.player_body.position,
+          this.character_model.rotation.y,
+          this.player_body.velocity
+        );
+      }
     }
 
     this.space_was_pressed = space_is_pressed;
@@ -80,6 +94,18 @@ export class PlayerController {
     if (desired_velocity.length() > 0) {
       this.target_rotation = Math.atan2(desired_velocity.x, desired_velocity.z);
     }
+
+    // Send movement updates periodically
+    const now = Date.now();
+    if (now - this.last_move_sent_time > this.move_send_interval && this.on_action) {
+      this.on_action(
+        "move",
+        this.player_body.position,
+        this.character_model.rotation.y,
+        this.player_body.velocity
+      );
+      this.last_move_sent_time = now;
+    }
   }
 
   private update_rotation(): void {
@@ -98,5 +124,22 @@ export class PlayerController {
 
   sync_position(): void {
     this.character_model.position.copy(this.player_body.position as any);
+  }
+
+  throw_snowball(direction: THREE.Vector3): void {
+    if (!this.on_action) {
+      return;
+    }
+
+    // Convert THREE.Vector3 direction to CANNON.Vec3
+    const cannon_direction = new CANNON.Vec3(direction.x, direction.y, direction.z);
+
+    this.on_action(
+      "throw",
+      this.player_body.position,
+      this.character_model.rotation.y,
+      this.player_body.velocity,
+      cannon_direction
+    );
   }
 }

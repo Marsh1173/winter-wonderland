@@ -37,6 +37,9 @@ export async function connect_to_server(name: string, character_id: string): Pro
             character_id: message.character_id,
           };
 
+          // Remove temporary handler so GameScene's listener can receive future messages
+          ws.onmessage = null;
+
           resolve({
             ws,
             player_data,

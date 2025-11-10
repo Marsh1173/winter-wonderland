@@ -6,6 +6,9 @@ import { InputManager } from "../managers/input-manager";
 import { CameraController } from "../managers/camera-controller";
 import { PlayerController } from "./player-controller";
 import { AnimationManager } from "../animation/animation-manager";
+import { RemotePlayerManager } from "./remote-player-manager";
+import { SnowballEffect } from "./snowball-effect";
+import type { ServerMessage } from "@/model/multiplayer-types";
 
 export class GameScene {
   private canvas: HTMLCanvasElement;
@@ -26,12 +29,28 @@ export class GameScene {
   private input_manager: InputManager;
   private camera_controller: CameraController;
   private player_controller: PlayerController | null = null;
+  private remote_player_manager: RemotePlayerManager;
+  private snowball_effect: SnowballEffect;
 
-  constructor(canvas: HTMLCanvasElement, character_id: string) {
+  private ws: WebSocket | null = null;
+  private on_message_handler: ((event: MessageEvent) => void) | null = null;
+
+  private raycaster: THREE.Raycaster;
+  private mouse: THREE.Vector2;
+  private ground_plane: THREE.Plane;
+  private throw_target: THREE.Vector3;
+  private on_click_handler: ((event: MouseEvent) => void) | null = null;
+
+  constructor(canvas: HTMLCanvasElement, character_id: string, ws?: WebSocket) {
     this.canvas = canvas;
     this.character_id = character_id;
     this.loader = new GLTFLoader();
     this.clock = new THREE.Clock();
+
+    // Initialize WebSocket listener immediately if provided
+    if (ws) {
+      this.init_websocket(ws);
+    }
 
     this.renderer = this.setup_renderer();
     this.scene = new THREE.Scene();
@@ -40,12 +59,27 @@ export class GameScene {
     this.physics_manager = new PhysicsManager();
     this.input_manager = new InputManager(canvas);
     this.camera_controller = new CameraController(this.camera);
+    this.remote_player_manager = new RemotePlayerManager(this.scene);
+    this.snowball_effect = new SnowballEffect(this.scene);
+
+    this.raycaster = new THREE.Raycaster();
+    this.mouse = new THREE.Vector2();
+    this.ground_plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+    this.throw_target = new THREE.Vector3();
 
     this.setup_lights();
     this.setup_floor();
     this.input_manager.init();
 
     window.addEventListener("resize", () => this.on_window_resize());
+    this.on_click_handler = (event: MouseEvent) => this.handle_mouse_click(event);
+    window.addEventListener("click", this.on_click_handler);
+  }
+
+  init_websocket(ws: WebSocket): void {
+    this.ws = ws;
+    this.on_message_handler = (event: MessageEvent) => this.handle_websocket_message(event);
+    this.ws.addEventListener("message", this.on_message_handler);
   }
 
   private setup_renderer(): THREE.WebGLRenderer {
@@ -152,7 +186,49 @@ export class GameScene {
       this.input_manager,
       this.camera_controller,
       animation_manager!,
-      this.physics_manager.get_world()
+      this.physics_manager.get_world(),
+      (action, position, rotation, velocity, direction) =>
+        this.send_player_action(action, position, rotation, velocity, direction)
+    );
+
+    // Send initial spawn message
+    this.send_player_spawn(player_body.position);
+  }
+
+  private send_player_spawn(position: any): void {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+      return;
+    }
+
+    this.ws.send(
+      JSON.stringify({
+        type: "player_spawn",
+        position: { x: position.x, y: position.y, z: position.z },
+        rotation: 0,
+      })
+    );
+  }
+
+  private send_player_action(
+    action: string,
+    position: any,
+    rotation: number,
+    velocity: any,
+    direction?: any
+  ): void {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+      return;
+    }
+
+    this.ws.send(
+      JSON.stringify({
+        type: "player_action",
+        action,
+        position: { x: position.x, y: position.y, z: position.z },
+        rotation,
+        velocity: velocity ? { x: velocity.x, y: velocity.y, z: velocity.z } : undefined,
+        direction: direction ? { x: direction.x, y: direction.y, z: direction.z } : undefined,
+      })
     );
   }
 
@@ -177,6 +253,9 @@ export class GameScene {
       this.camera_controller.update(player_body);
     }
 
+    // Update remote players with smooth interpolation
+    this.remote_player_manager.update(dt);
+
     if (this.mixer) {
       this.mixer.update(dt);
     }
@@ -200,9 +279,107 @@ export class GameScene {
     this.renderer.setSize(width, height);
   };
 
+  private handle_mouse_click = (event: MouseEvent): void => {
+    if (!this.character_model || !this.player_controller) {
+      return;
+    }
+
+    // Convert mouse position to normalized device coordinates
+    this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+    // Update raycaster with camera and mouse position
+    this.raycaster.setFromCamera(this.mouse, this.camera);
+
+    // Find intersection with ground plane
+    this.raycaster.ray.intersectPlane(this.ground_plane, this.throw_target);
+
+    // Calculate direction from player to target
+    const direction = this.throw_target
+      .clone()
+      .sub(this.character_model.position)
+      .normalize();
+
+    // Show snowball effect locally
+    this.snowball_effect.show_throw_effect(this.character_model.position, direction);
+
+    // Trigger throw action
+    this.player_controller.throw_snowball(direction);
+  };
+
+  private handle_websocket_message(event: MessageEvent): void {
+    try {
+      const message = JSON.parse(event.data) as ServerMessage;
+
+      switch (message.type) {
+        case "world_snapshot":
+          console.log(`🌍 Received world snapshot with ${message.players.length} players`);
+          for (const player of message.players) {
+            console.log(`  - ${player.name} (${player.player_id})`);
+            this.remote_player_manager.add_player(
+              player.player_id,
+              player.name,
+              player.character_id,
+              player.position,
+              player.rotation
+            );
+          }
+          break;
+
+        case "player_joined":
+          this.remote_player_manager.add_player(
+            message.player_id,
+            message.name,
+            message.character_id,
+            message.position,
+            message.rotation
+          );
+          break;
+
+        case "player_left":
+          this.remote_player_manager.remove_player(message.player_id);
+          break;
+
+        case "player_state":
+          if (message.action === "throw") {
+            this.remote_player_manager.handle_action(
+              message.player_id,
+              message.action,
+              message.position,
+              message.direction,
+              message.rotation,
+              message.velocity
+            );
+          } else {
+            this.remote_player_manager.update_player(
+              message.player_id,
+              message.position,
+              message.rotation,
+              message.velocity,
+              message.action
+            );
+          }
+          break;
+      }
+    } catch (error) {
+      console.error("Failed to handle WebSocket message:", error);
+    }
+  }
+
   dispose(): void {
     this.stop();
     window.removeEventListener("resize", this.on_window_resize);
+
+    if (this.on_click_handler) {
+      window.removeEventListener("click", this.on_click_handler);
+    }
+
+    if (this.ws && this.on_message_handler) {
+      this.ws.removeEventListener("message", this.on_message_handler);
+    }
+
+    this.snowball_effect.cleanup();
+    this.remote_player_manager.cleanup();
     this.input_manager.dispose();
     this.renderer.dispose();
   }

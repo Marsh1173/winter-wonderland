@@ -40,7 +40,7 @@ export const GameState: React.FC<GameStateProps> = ({ ws, player_data, on_discon
 
     const init_scene = async () => {
       try {
-        const scene = new GameScene(canvas_ref.current!, player_data.character_id);
+        const scene = new GameScene(canvas_ref.current!, player_data.character_id, ws);
         game_scene_ref.current = scene;
 
         await scene.load_character();
