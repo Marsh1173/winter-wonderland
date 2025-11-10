@@ -1,5 +1,4 @@
 import type { ServerWebSocket } from "bun";
-import { handle_chat_message } from "./chat-handler";
 import { PlayerManager, type PlayerData } from "./player-manager";
 import type { PlayerSpawnMessage, PlayerActionMessage } from "@/model/multiplayer-types";
 
@@ -76,9 +75,7 @@ export class WebSocketHandler {
     try {
       const data = JSON.parse(message.toString());
 
-      if (data.type === "chat_message" && typeof data.message === "string") {
-        this.handle_chat_message(ws, data.message);
-      } else if (data.type === "player_spawn") {
+      if (data.type === "player_spawn") {
         this.handle_player_spawn(ws, data as PlayerSpawnMessage);
       } else if (data.type === "player_action") {
         this.handle_player_action(ws, data as PlayerActionMessage);
@@ -137,17 +134,4 @@ export class WebSocketHandler {
     });
   }
 
-  private handle_chat_message(ws: ServerWebSocket<PlayerData>, text: string): void {
-    const result = handle_chat_message(text, ws.data.player_id, ws.data.name);
-
-    if (result.success && result.message) {
-      console.log(`💬 Chat from ${ws.data.player_id}: ${result.message.message}`);
-      this.player_manager.broadcast_chat(result.message);
-    } else {
-      this.player_manager.send_to_player(ws, {
-        type: "chat_error",
-        error: result.error,
-      });
-    }
-  }
 }

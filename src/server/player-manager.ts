@@ -1,5 +1,4 @@
 import type { ServerWebSocket } from "bun";
-import type { ChatMessage } from "@/model/chat-types";
 import type { Vec3 } from "@/model/multiplayer-types";
 
 export type PlayerData = {
@@ -66,13 +65,6 @@ export class PlayerManager {
         error
       );
     }
-  }
-
-  broadcast_chat(message: ChatMessage): void {
-    this.broadcast_message({
-      type: "chat_message",
-      data: message,
-    });
   }
 
   update_player_state(player_id: string, state: Partial<GamePlayerState>, player_data: PlayerData): void {

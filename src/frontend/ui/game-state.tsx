@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import type { PlayerData } from "../networking/websocket-client";
 import { GameScene } from "../game/game-scene";
-import { ChatBox } from "../chat/chat-box";
 
 interface GameStateProps {
   ws: WebSocket;
@@ -76,8 +75,6 @@ export const GameState: React.FC<GameStateProps> = ({ ws, player_data, on_discon
           <p>Character: {player_data.character_id}</p>
         </div>
       </div>
-
-      <ChatBox ws={ws} player_name={player_data.name} />
     </div>
   );
 };

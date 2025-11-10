@@ -13,7 +13,7 @@ export interface ValidationResult<T> {
   success: boolean;
   data?: T;
   error?: string;
-}
+    }
 
 /**
  * Validate connection parameters
@@ -69,40 +69,4 @@ export function validate_connect_params(searchParams: URLSearchParams): Validati
       character_id: character_id.toLowerCase(),
     },
   };
-}
-
-/**
- * Chat message validation
- */
-const CHAT_MAX_LENGTH = 500;
-const HTML_TAG_PATTERN = /<[^>]*>/g;
-const SCRIPT_PATTERN = /<script|<iframe|javascript:|on\w+\s*=/gi;
-
-export function validate_chat_message(text: string): ValidationResult<string> {
-  if (!text || typeof text !== "string") {
-    return { success: false, error: "Message must be a string" };
-  }
-
-  const trimmed = text.trim();
-
-  if (trimmed.length === 0) {
-    return { success: false, error: "Message cannot be empty" };
-  }
-
-  if (trimmed.length > CHAT_MAX_LENGTH) {
-    return {
-      success: false,
-      error: `Message must be ${CHAT_MAX_LENGTH} characters or less`,
-    };
-  }
-
-  // Check for script injection attempts
-  if (SCRIPT_PATTERN.test(trimmed)) {
-    return { success: false, error: "Message contains invalid content" };
-  }
-
-  // Remove HTML tags
-  const sanitized = trimmed.replace(HTML_TAG_PATTERN, "");
-
-  return { success: true, data: sanitized };
 }
