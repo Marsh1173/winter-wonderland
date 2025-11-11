@@ -33,7 +33,6 @@ export async function connect_to_server(name: string, character_id: string): Pro
       clearTimeout(timeout);
       try {
         const message = JSON.parse(event.data) as WorldSnapshotMessage;
-        console.log(message);
         // Remove temporary handler so GameScene's listener can receive future messages
         ws.onmessage = null;
 

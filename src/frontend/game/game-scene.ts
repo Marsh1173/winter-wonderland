@@ -290,9 +290,7 @@ export class GameScene {
 
       switch (message.type) {
         case "world_snapshot":
-          console.log(`🌍 Received world snapshot with ${message.players.length} players`);
           for (const player of message.players) {
-            console.log(`  - ${player.name} (${player.player_id})`);
             this.remote_player_manager.add_player(
               player.player_id,
               player.name,

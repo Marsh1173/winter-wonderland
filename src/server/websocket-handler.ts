@@ -29,11 +29,6 @@ export class WebSocketHandler {
       .get_world_snapshot()
       .filter((state) => state.player_id !== ws.data.player_id);
 
-    console.log(`🌍 Sending world snapshot to ${ws.data.player_id} with ${world_snapshot.length} players`);
-    world_snapshot.forEach((state) => {
-      console.log(`  - ${state.name} (${state.player_id})`);
-    });
-
     const world_snapshot_message: WorldSnapshotMessage = {
       type: "world_snapshot",
       player_id: ws.data.player_id,
