@@ -1,6 +1,6 @@
 import * as THREE from "three";
 
-type AnimationState = "idle" | "walk" | "jump" | "fall";
+type AnimationState = "idle" | "walk" | "jump" | "fall" | "throw";
 
 export class AnimationManager {
   private mixer: THREE.AnimationMixer;
@@ -78,6 +78,11 @@ export class AnimationManager {
     if (this.current_state === "fall") return;
     this.current_state = "fall";
     this.play_animation(["fall", "falling"], true);
+  }
+
+  play_throw(): void {
+    this.current_state = "throw";
+    this.play_animation(["attack-melee-right", "attack", "throw"], false);
   }
 
   update_state(horizontal_velocity: number, vertical_velocity: number, is_grounded: boolean): void {

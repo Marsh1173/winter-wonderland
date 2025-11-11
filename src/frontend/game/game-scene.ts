@@ -8,6 +8,7 @@ import { PlayerController } from "./player-controller";
 import { AnimationManager } from "../animation/animation-manager";
 import { RemotePlayerManager } from "./remote-player-manager";
 import { SnowballEffect } from "./snowball-effect";
+import { SnowballManager } from "./snowball-manager";
 import { SnowEffect } from "./snow-effect";
 import { InteractablesManager } from "./interactables-manager";
 import type { PlayerActionMessage, ServerMessage, Vec3, WorldSnapshotMessage } from "@/model/multiplayer-types";
@@ -30,8 +31,10 @@ export class GameScene {
   private input_manager: InputManager;
   private camera_controller: CameraController;
   private player_controller: PlayerController | null = null;
+  private animation_manager: AnimationManager | null = null;
   private remote_player_manager: RemotePlayerManager;
   private snowball_effect: SnowballEffect;
+  private snowball_manager: SnowballManager;
   private snow_effect: SnowEffect;
   private interactables_manager: InteractablesManager;
 
@@ -63,6 +66,7 @@ export class GameScene {
     this.camera_controller = new CameraController(this.camera);
     this.remote_player_manager = new RemotePlayerManager(this.scene);
     this.snowball_effect = new SnowballEffect(this.scene);
+    this.snowball_manager = new SnowballManager(this.scene, this.physics_manager);
     this.snow_effect = new SnowEffect(this.scene, this.camera);
 
     this.interactables_manager = new InteractablesManager();
@@ -266,7 +270,7 @@ export class GameScene {
   private setup_player_controller(mixer: THREE.AnimationMixer, character_model: THREE.Group): void {
     const player_body = this.physics_manager.create_player(0, 1, 0);
 
-    const animation_manager = new AnimationManager(mixer, this.animation_clips);
+    this.animation_manager = new AnimationManager(mixer, this.animation_clips);
 
     // animation_manager.play_idle(); // Do we need this
 
@@ -276,7 +280,7 @@ export class GameScene {
       this.physics_manager,
       this.input_manager,
       this.camera_controller,
-      animation_manager,
+      this.animation_manager,
       this.physics_manager.get_world(),
       (action, position, rotation, velocity, direction) =>
         this.send_player_action(action, position, rotation, velocity, direction)
@@ -292,6 +296,17 @@ export class GameScene {
     velocity: Vec3,
     direction?: number
   ): void {
+    if (action === "throw" && direction !== undefined) {
+      // Create local snowball
+      const snowball_start = new THREE.Vector3(position.x, position.y, position.z);
+      this.snowball_manager.create_snowball(snowball_start, direction);
+
+      // Play throw animation
+      if (this.animation_manager) {
+        this.animation_manager.play_throw();
+      }
+    }
+
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
       return;
     }
@@ -345,6 +360,10 @@ export class GameScene {
     // Update remote players with smooth interpolation
     this.remote_player_manager.update(dt);
 
+    // Update snowballs with collision detection
+    const remote_player_positions = this.remote_player_manager.get_player_positions();
+    this.snowball_manager.update(dt, remote_player_positions);
+
     // Update snow effect
     this.snow_effect.update(dt);
 
@@ -372,15 +391,13 @@ export class GameScene {
       return;
     }
 
-    // // Log player position for interactable coordinate setup
-    // const player_body = this.physics_manager.get_player_body();
-    // if (player_body) {
-    //   console.log(
-    //     `Player position: new CANNON.Vec3(${player_body.position.x.toFixed(2)}, ${player_body.position.y.toFixed(
-    //       2
-    //     )}, ${player_body.position.z.toFixed(2)})`
-    //   );
-    // }
+    const player_body = this.physics_manager.get_player_body();
+    if (!player_body) {
+      return;
+    }
+
+    // Update ground plane to be at player's elevation
+    this.ground_plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -player_body.position.y);
 
     // Convert mouse position to normalized device coordinates
     this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
@@ -389,15 +406,12 @@ export class GameScene {
     // Update raycaster with camera and mouse position
     this.raycaster.setFromCamera(this.mouse, this.camera);
 
-    // Find intersection with ground plane
+    // Find intersection with ground plane at player elevation
     this.raycaster.ray.intersectPlane(this.ground_plane, this.throw_target);
 
-    // Calculate direction from player to target
-    // const direction = this.throw_target.clone().sub(this.character_model.position).normalize();
-    const direction = 0;
-
-    // Show snowball effect locally
-    this.snowball_effect.show_throw_effect(this.character_model.position, direction);
+    // Calculate direction angle from player to target (in XZ plane)
+    const direction_vector = this.throw_target.clone().sub(this.character_model.position);
+    const direction = Math.atan2(direction_vector.x, direction_vector.z);
 
     // Trigger throw action
     this.player_controller.throw_snowball(direction);
@@ -444,6 +458,11 @@ export class GameScene {
               message.direction,
               message.rotation
             );
+            // Create snowball for remote player throw
+            if (message.direction !== undefined) {
+              const snowball_start = new THREE.Vector3(message.position.x, message.position.y, message.position.z);
+              this.snowball_manager.create_snowball(snowball_start, message.direction);
+            }
           } else {
             this.remote_player_manager.update_player(
               message.player_id,
@@ -473,6 +492,7 @@ export class GameScene {
     }
 
     this.snowball_effect.cleanup();
+    this.snowball_manager.cleanup();
     this.snow_effect.cleanup();
     this.remote_player_manager.cleanup();
     this.input_manager.dispose();

@@ -1,7 +1,6 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { get_character_model_url } from "@/model/characters";
-import { SnowballEffect } from "./snowball-effect";
 import { AnimationManager } from "../animation/animation-manager";
 import type { Vec3 } from "@/model/multiplayer-types";
 
@@ -26,12 +25,10 @@ export class RemotePlayerManager {
   private remote_players: Map<string, RemotePlayer> = new Map();
   private scene: THREE.Scene;
   private loader: GLTFLoader;
-  private snowball_effect: SnowballEffect;
 
   constructor(scene: THREE.Scene) {
     this.scene = scene;
     this.loader = new GLTFLoader();
-    this.snowball_effect = new SnowballEffect(scene);
   }
 
   async add_player(
@@ -149,7 +146,6 @@ export class RemotePlayerManager {
     // Handle specific actions
     if (action === "throw" && direction) {
       this.play_throw_animation(remote_player);
-      this.show_snowball_effect(position, direction);
     }
   }
 
@@ -209,12 +205,23 @@ export class RemotePlayerManager {
   }
 
   private play_throw_animation(remote_player: RemotePlayer): void {
-    // TODO: Implement throw animation if available
-    // For now, this is a placeholder for future animation support
+    if (remote_player.animation_manager) {
+      remote_player.animation_manager.play_throw();
+    }
   }
 
-  private show_snowball_effect(position: Vec3, direction: number): void {
-    this.snowball_effect.show_throw_effect(position, direction);
+
+  get_player_positions(): Map<string, THREE.Vector3> {
+    const positions = new Map<string, THREE.Vector3>();
+    for (const [player_id, remote_player] of this.remote_players) {
+      const pos = new THREE.Vector3(
+        remote_player.position.x,
+        remote_player.position.y,
+        remote_player.position.z
+      );
+      positions.set(player_id, pos);
+    }
+    return positions;
   }
 
   private load_model(path: string): Promise<any> {
