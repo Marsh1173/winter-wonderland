@@ -8,6 +8,7 @@ import { PlayerController } from "./player-controller";
 import { AnimationManager } from "../animation/animation-manager";
 import { RemotePlayerManager } from "./remote-player-manager";
 import { SnowballEffect } from "./snowball-effect";
+import { SnowEffect } from "./snow-effect";
 import type { PlayerActionMessage, ServerMessage, Vec3, WorldSnapshotMessage } from "@/model/multiplayer-types";
 
 export class GameScene {
@@ -30,6 +31,7 @@ export class GameScene {
   private player_controller: PlayerController | null = null;
   private remote_player_manager: RemotePlayerManager;
   private snowball_effect: SnowballEffect;
+  private snow_effect: SnowEffect;
 
   private ws: WebSocket | null = null;
   private on_message_handler: ((event: MessageEvent) => void) | null = null;
@@ -59,6 +61,7 @@ export class GameScene {
     this.camera_controller = new CameraController(this.camera);
     this.remote_player_manager = new RemotePlayerManager(this.scene);
     this.snowball_effect = new SnowballEffect(this.scene);
+    this.snow_effect = new SnowEffect(this.scene, this.camera);
 
     this.raycaster = new THREE.Raycaster();
     this.mouse = new THREE.Vector2();
@@ -136,6 +139,9 @@ export class GameScene {
     const backlight = new THREE.DirectionalLight(0x5776ff, 0.5);
     backlight.position.set(-10, 5, 3);
     this.scene.add(backlight);
+
+    // Add fog for atmospheric depth and winter atmosphere - set to strong for testing
+    this.scene.fog = new THREE.Fog(0x1f2a44, 10, 30);
   }
 
   private setup_floor(): void {
@@ -323,6 +329,9 @@ export class GameScene {
     // Update remote players with smooth interpolation
     this.remote_player_manager.update(dt);
 
+    // Update snow effect
+    this.snow_effect.update(dt);
+
     this.renderer.render(this.scene, this.camera);
   };
 
@@ -438,6 +447,7 @@ export class GameScene {
     }
 
     this.snowball_effect.cleanup();
+    this.snow_effect.cleanup();
     this.remote_player_manager.cleanup();
     this.input_manager.dispose();
     this.renderer.dispose();
