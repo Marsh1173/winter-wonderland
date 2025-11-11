@@ -1,3 +1,5 @@
+import type { WorldSnapshotMessage } from "@/model/multiplayer-types";
+
 export interface PlayerData {
   player_id: string;
   name: string;
@@ -6,13 +8,15 @@ export interface PlayerData {
 
 export interface ConnectionResult {
   ws: WebSocket;
-  player_data: PlayerData;
+  world_snapshot: WorldSnapshotMessage;
 }
 
 export async function connect_to_server(name: string, character_id: string): Promise<ConnectionResult> {
   return new Promise((resolve, reject) => {
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const url = `${protocol}//${window.location.host}/connect?name=${encodeURIComponent(name)}&character_id=${encodeURIComponent(character_id)}`;
+    const url = `${protocol}//${window.location.host}/connect?name=${encodeURIComponent(
+      name
+    )}&character_id=${encodeURIComponent(character_id)}`;
 
     const ws = new WebSocket(url);
 
@@ -21,30 +25,22 @@ export async function connect_to_server(name: string, character_id: string): Pro
       reject(new Error("Connection timeout"));
     }, 5000);
 
-    ws.onopen = () => {
+    ws.onopen = (event) => {
       clearTimeout(timeout);
     };
 
     ws.onmessage = (event) => {
       clearTimeout(timeout);
       try {
-        const message = JSON.parse(event.data);
+        const message = JSON.parse(event.data) as WorldSnapshotMessage;
+        console.log(message);
+        // Remove temporary handler so GameScene's listener can receive future messages
+        ws.onmessage = null;
 
-        if (message.type === "welcome") {
-          const player_data: PlayerData = {
-            player_id: message.player_id,
-            name: message.name,
-            character_id: message.character_id,
-          };
-
-          // Remove temporary handler so GameScene's listener can receive future messages
-          ws.onmessage = null;
-
-          resolve({
-            ws,
-            player_data,
-          });
-        }
+        resolve({
+          ws,
+          world_snapshot: message,
+        });
       } catch (error) {
         console.error("Failed to parse message:", error);
         reject(new Error("Failed to parse server response"));

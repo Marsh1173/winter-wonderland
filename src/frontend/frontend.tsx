@@ -5,11 +5,12 @@ import { CharacterSelectState } from "./ui/character-select-state";
 import { GameState } from "./ui/game-state";
 import type { PlayerData } from "./networking/websocket-client";
 import "./index.css";
+import type { WorldSnapshotMessage } from "@/model/multiplayer-types";
 
 type AppState =
   | { type: "loading" }
   | { type: "character-select" }
-  | { type: "game"; player_data: PlayerData; websocket: WebSocket };
+  | { type: "game"; world_snapshot: WorldSnapshotMessage; websocket: WebSocket };
 
 function App() {
   const [app_state, set_app_state] = useState<AppState>({ type: "loading" });
@@ -21,15 +22,15 @@ function App() {
       )}
       {app_state.type === "character-select" && (
         <CharacterSelectState
-          on_character_selected={(ws, player) => {
-            set_app_state({ type: "game", player_data: player, websocket: ws });
+          on_world_joined={(ws, world_snapshot) => {
+            set_app_state({ type: "game", world_snapshot: world_snapshot, websocket: ws });
           }}
         />
       )}
       {app_state.type === "game" && (
         <GameState
           ws={app_state.websocket}
-          player_data={app_state.player_data}
+          world_snapshot={app_state.world_snapshot}
           on_disconnect={() => set_app_state({ type: "character-select" })}
         />
       )}

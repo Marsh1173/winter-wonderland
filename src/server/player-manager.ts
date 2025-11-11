@@ -39,37 +39,25 @@ export class PlayerManager {
     return this.players.size;
   }
 
-  broadcast_message(message: Record<string, any>): void {
-    const json_payload = JSON.stringify(message);
+  broadcast_message(message: Record<string, any>, exclude_sender_id: string | undefined = undefined): void {
     for (const socket of this.players) {
-      try {
-        socket.send(json_payload);
-      } catch (error) {
-        console.error(
-          `Failed to send message to player ${socket.data.player_id}:`,
-          error
-        );
+      if (exclude_sender_id === undefined || socket.data.player_id !== exclude_sender_id) {
+        this.send_to_player(socket, message);
       }
     }
   }
 
-  send_to_player(
-    ws: ServerWebSocket<PlayerData>,
-    message: Record<string, any>
-  ): void {
+  send_to_player(ws: ServerWebSocket<PlayerData>, message: Record<string, any>): void {
     try {
       ws.send(JSON.stringify(message));
     } catch (error) {
-      console.error(
-        `Failed to send message to player ${ws.data.player_id}:`,
-        error
-      );
+      console.error(`Failed to send message to player ${ws.data.player_id}:`, error);
     }
   }
 
-  update_player_state(player_id: string, state: Partial<GamePlayerState>, player_data: PlayerData): void {
-    const existing_state = this.game_state.get(player_id) || {
-      player_id,
+  update_player_state(state: Partial<GamePlayerState>, player_data: PlayerData): void {
+    const existing_state = this.game_state.get(player_data.player_id) || {
+      player_id: player_data.player_id,
       name: player_data.name,
       character_id: player_data.character_id,
       position: { x: 0, y: 1, z: 0 },
@@ -85,7 +73,7 @@ export class PlayerManager {
       last_action_time: Date.now(),
     };
 
-    this.game_state.set(player_id, updated_state);
+    this.game_state.set(player_data.player_id, updated_state);
   }
 
   get_player_state(player_id: string): GamePlayerState | undefined {
@@ -96,32 +84,11 @@ export class PlayerManager {
     return Array.from(this.game_state.values());
   }
 
-  broadcast_player_action(sender_id: string, action: Record<string, any>): void {
-    const json_payload = JSON.stringify(action);
-    for (const socket of this.players) {
-      // Send to all players except the sender (sender already has this state)
-      if (socket.data.player_id !== sender_id) {
-        try {
-          socket.send(json_payload);
-        } catch (error) {
-          console.error(
-            `Failed to send action to player ${socket.data.player_id}:`,
-            error
-          );
-        }
-      }
-    }
-  }
-
   log_connection(ws: ServerWebSocket<PlayerData>): void {
-    console.log(
-      `✅ Player connected: ${ws.data.player_id} (${ws.data.name}) - Total: ${this.get_player_count()}`
-    );
+    console.log(`✅ Player connected: ${ws.data.player_id} (${ws.data.name}) - Total: ${this.get_player_count()}`);
   }
 
   log_disconnection(ws: ServerWebSocket<PlayerData>): void {
-    console.log(
-      `❌ Player disconnected: ${ws.data.player_id} - Total: ${this.get_player_count()}`
-    );
+    console.log(`❌ Player disconnected: ${ws.data.player_id} - Total: ${this.get_player_count()}`);
   }
 }

@@ -11,15 +11,7 @@ export class CameraController {
   }
 
   update(player_body: CANNON.Body): void {
-    this.update_position(player_body);
-  }
-
-  private update_position(player_body: CANNON.Body): void {
-    const player_pos = new THREE.Vector3(
-      player_body.position.x,
-      player_body.position.y,
-      player_body.position.z
-    );
+    const player_pos = new THREE.Vector3(player_body.position.x, player_body.position.y, player_body.position.z);
 
     const camera_offset = new THREE.Vector3(0, this.camera_height, this.camera_distance);
     this.camera.position.copy(player_pos).add(camera_offset);

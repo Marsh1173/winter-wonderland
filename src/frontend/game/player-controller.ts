@@ -13,7 +13,6 @@ export class PlayerController {
   private camera_controller: CameraController;
   private animation_manager: AnimationManager;
   private ground_checker: GroundChecker;
-  private on_action: ((action: string, position: CANNON.Vec3, rotation: number, velocity: CANNON.Vec3, direction?: CANNON.Vec3) => void) | null;
 
   private movement_speed = 5;
   private jump_speed = 8;
@@ -31,7 +30,13 @@ export class PlayerController {
     camera_controller: CameraController,
     animation_manager: AnimationManager,
     world: CANNON.World,
-    on_action?: (action: string, position: CANNON.Vec3, rotation: number, velocity: CANNON.Vec3, direction?: CANNON.Vec3) => void
+    private on_action: (
+      action: "move" | "jump" | "throw",
+      position: CANNON.Vec3,
+      rotation: number,
+      velocity: CANNON.Vec3,
+      direction?: number
+    ) => void
   ) {
     this.player_body = player_body;
     this.character_model = character_model;
@@ -39,7 +44,6 @@ export class PlayerController {
     this.camera_controller = camera_controller;
     this.animation_manager = animation_manager;
     this.ground_checker = new GroundChecker(player_body, world);
-    this.on_action = on_action || null;
   }
 
   update(): void {
@@ -55,14 +59,7 @@ export class PlayerController {
     if (space_is_pressed && !this.space_was_pressed && this.ground_checker.is_grounded()) {
       this.player_body.velocity.y = this.jump_speed;
 
-      if (this.on_action) {
-        this.on_action(
-          "jump",
-          this.player_body.position,
-          this.character_model.rotation.y,
-          this.player_body.velocity
-        );
-      }
+      this.on_action("jump", this.player_body.position, this.character_model.rotation.y, this.player_body.velocity);
     }
 
     this.space_was_pressed = space_is_pressed;
@@ -96,14 +93,10 @@ export class PlayerController {
     }
 
     // Send movement updates periodically
+    // FIX THIS
     const now = Date.now();
-    if (now - this.last_move_sent_time > this.move_send_interval && this.on_action) {
-      this.on_action(
-        "move",
-        this.player_body.position,
-        this.character_model.rotation.y,
-        this.player_body.velocity
-      );
+    if (now - this.last_move_sent_time > this.move_send_interval) {
+      this.on_action("move", this.player_body.position, this.character_model.rotation.y, this.player_body.velocity);
       this.last_move_sent_time = now;
     }
   }
@@ -126,20 +119,13 @@ export class PlayerController {
     this.character_model.position.copy(this.player_body.position as any);
   }
 
-  throw_snowball(direction: THREE.Vector3): void {
-    if (!this.on_action) {
-      return;
-    }
-
-    // Convert THREE.Vector3 direction to CANNON.Vec3
-    const cannon_direction = new CANNON.Vec3(direction.x, direction.y, direction.z);
-
+  throw_snowball(direction: number): void {
     this.on_action(
       "throw",
       this.player_body.position,
       this.character_model.rotation.y,
       this.player_body.velocity,
-      cannon_direction
+      direction
     );
   }
 }

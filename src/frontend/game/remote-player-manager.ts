@@ -34,20 +34,22 @@ export class RemotePlayerManager {
     this.snowball_effect = new SnowballEffect(scene);
   }
 
-  async add_player(player_id: string, name: string, character_id: string, position: Vec3, rotation: number): Promise<void> {
+  async add_player(
+    player_id: string,
+    name: string,
+    character_id: string,
+    position: Vec3,
+    rotation: number
+  ): Promise<void> {
     // Don't add if already exists
     if (this.remote_players.has(player_id)) {
       console.log(`⚠️  Remote player ${name} already exists, skipping`);
       return;
     }
 
-    console.log(`👥 Loading remote player: ${name} (${player_id}) with character ${character_id}`);
-
     try {
       const model_path = get_character_model_url(character_id);
-      console.log(`   Model path: ${model_path}`);
       const gltf = await this.load_model(model_path);
-      console.log(`   ✅ Model loaded for ${name}`);
 
       const model = gltf.scene;
       model.scale.set(1, 1, 1);
@@ -92,7 +94,6 @@ export class RemotePlayerManager {
       };
 
       this.remote_players.set(player_id, remote_player);
-      console.log(`✅ Remote player added to scene: ${name} (${player_id})`);
     } catch (error) {
       console.error(`❌ Failed to load remote player model for ${character_id}:`, error);
     }
@@ -112,10 +113,9 @@ export class RemotePlayerManager {
     }
 
     this.remote_players.delete(player_id);
-    console.log(`👋 Remote player removed: ${remote_player.name} (${player_id})`);
   }
 
-  update_player(player_id: string, position: Vec3, rotation: number, velocity?: Vec3, action?: string): void {
+  update_player(player_id: string, position: Vec3, rotation: number, velocity: Vec3, action?: string): void {
     const remote_player = this.remote_players.get(player_id);
     if (!remote_player) {
       return;
@@ -123,16 +123,21 @@ export class RemotePlayerManager {
 
     remote_player.target_position = { ...position };
     remote_player.target_rotation = rotation;
-    if (velocity) {
-      remote_player.current_velocity = { ...velocity };
-    }
+    remote_player.current_velocity = { ...velocity };
     if (action) {
       remote_player.last_action = action;
     }
     remote_player.last_update_time = Date.now();
   }
 
-  handle_action(player_id: string, action: string, position: Vec3, direction?: Vec3, rotation?: number, velocity?: Vec3): void {
+  handle_action(
+    player_id: string,
+    action: string,
+    position: Vec3,
+    velocity: Vec3,
+    direction?: number,
+    rotation?: number
+  ): void {
     const remote_player = this.remote_players.get(player_id);
     if (!remote_player) {
       return;
@@ -144,7 +149,7 @@ export class RemotePlayerManager {
     // Handle specific actions
     if (action === "throw" && direction) {
       this.play_throw_animation(remote_player);
-      this.show_snowball_effect(player_id, position, direction);
+      this.show_snowball_effect(position, direction);
     }
   }
 
@@ -169,7 +174,8 @@ export class RemotePlayerManager {
       );
 
       // Use faster rotation when moving, slower when idle
-      const rotation_speed = horizontal_velocity > 0.5 ? 0.25 : 0.1;
+      // const rotation_speed = horizontal_velocity > 0.5 ? 0.25 : 0.1;
+      const rotation_speed = 0.5;
 
       // Interpolate rotation using shortest angle
       const angle_diff = remote_player.target_rotation - remote_player.rotation;
@@ -207,7 +213,7 @@ export class RemotePlayerManager {
     // For now, this is a placeholder for future animation support
   }
 
-  private show_snowball_effect(player_id: string, position: Vec3, direction: Vec3): void {
+  private show_snowball_effect(position: Vec3, direction: number): void {
     this.snowball_effect.show_throw_effect(position, direction);
   }
 

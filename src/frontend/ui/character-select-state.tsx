@@ -1,12 +1,13 @@
 import { CHARACTERS, get_character_preview_url } from "@/model/characters";
-import { connect_to_server, type PlayerData } from "../networking/websocket-client";
+import { connect_to_server } from "../networking/websocket-client";
 import React, { useState } from "react";
+import type { WorldSnapshotMessage } from "@/model/multiplayer-types";
 
 interface CharacterSelectStateProps {
-  on_character_selected: (ws: WebSocket, player_data: PlayerData) => void;
+  on_world_joined: (ws: WebSocket, world_snapshot: WorldSnapshotMessage) => void;
 }
 
-export const CharacterSelectState: React.FC<CharacterSelectStateProps> = ({ on_character_selected }) => {
+export const CharacterSelectState: React.FC<CharacterSelectStateProps> = ({ on_world_joined }) => {
   const [name, setName] = useState("Nate");
   const [selectedCharacter, setSelectedCharacter] = useState<string | null>(
     CHARACTERS[Math.floor(Math.random() * CHARACTERS.length)]!.id
@@ -21,8 +22,8 @@ export const CharacterSelectState: React.FC<CharacterSelectStateProps> = ({ on_c
     setError(null);
 
     try {
-      const { ws, player_data } = await connect_to_server(name, selectedCharacter);
-      on_character_selected(ws, player_data);
+      const { ws, world_snapshot } = await connect_to_server(name, selectedCharacter);
+      on_world_joined(ws, world_snapshot);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Connection failed";
       setError(errorMessage);

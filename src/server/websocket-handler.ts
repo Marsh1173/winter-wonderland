@@ -1,6 +1,6 @@
 import type { ServerWebSocket } from "bun";
 import { PlayerManager, type PlayerData } from "./player-manager";
-import type { PlayerSpawnMessage, PlayerActionMessage } from "@/model/multiplayer-types";
+import type { PlayerActionMessage, WorldSnapshotMessage } from "@/model/multiplayer-types";
 
 export class WebSocketHandler {
   private player_manager: PlayerManager;
@@ -15,7 +15,6 @@ export class WebSocketHandler {
 
     // Initialize player state with default spawn position
     this.player_manager.update_player_state(
-      ws.data.player_id,
       {
         position: { x: 0, y: 1, z: 0 },
         rotation: 0,
@@ -25,27 +24,21 @@ export class WebSocketHandler {
       ws.data
     );
 
-    this.player_manager.send_to_player(ws, {
-      type: "welcome",
-      player_id: ws.data.player_id,
-      name: ws.data.name,
-      character_id: ws.data.character_id,
-    });
-
     // Send world snapshot (all existing players except the newly connected one)
     const world_snapshot = this.player_manager
       .get_world_snapshot()
       .filter((state) => state.player_id !== ws.data.player_id);
 
-    console.log(
-      `🌍 Sending world snapshot to ${ws.data.player_id} with ${world_snapshot.length} players`
-    );
+    console.log(`🌍 Sending world snapshot to ${ws.data.player_id} with ${world_snapshot.length} players`);
     world_snapshot.forEach((state) => {
       console.log(`  - ${state.name} (${state.player_id})`);
     });
 
-    this.player_manager.send_to_player(ws, {
+    const world_snapshot_message: WorldSnapshotMessage = {
       type: "world_snapshot",
+      player_id: ws.data.player_id,
+      name: ws.data.name,
+      character_id: ws.data.character_id,
       players: world_snapshot.map((state) => ({
         player_id: state.player_id,
         name: state.name,
@@ -53,31 +46,29 @@ export class WebSocketHandler {
         position: state.position,
         rotation: state.rotation,
       })),
-    });
+    };
+
+    this.player_manager.send_to_player(ws, world_snapshot_message);
 
     // Broadcast player_joined to all other players
-    const other_players = this.player_manager.get_all_players();
-    for (const player_ws of other_players) {
-      if (player_ws !== ws) {
-        this.player_manager.send_to_player(player_ws, {
-          type: "player_joined",
-          player_id: ws.data.player_id,
-          name: ws.data.name,
-          character_id: ws.data.character_id,
-          position: { x: 0, y: 1, z: 0 },
-          rotation: 0,
-        });
-      }
-    }
+    this.player_manager.broadcast_message(
+      {
+        type: "player_joined",
+        player_id: ws.data.player_id,
+        name: ws.data.name,
+        character_id: ws.data.character_id,
+        position: { x: 0, y: 1, z: 0 },
+        rotation: 0,
+      },
+      ws.data.player_id
+    );
   }
 
   handle_message(ws: ServerWebSocket<PlayerData>, message: string | Buffer): void {
     try {
       const data = JSON.parse(message.toString());
 
-      if (data.type === "player_spawn") {
-        this.handle_player_spawn(ws, data as PlayerSpawnMessage);
-      } else if (data.type === "player_action") {
+      if (data.type === "player_action") {
         this.handle_player_action(ws, data as PlayerActionMessage);
       }
     } catch (error) {
@@ -97,22 +88,8 @@ export class WebSocketHandler {
     });
   }
 
-  private handle_player_spawn(ws: ServerWebSocket<PlayerData>, data: PlayerSpawnMessage): void {
-    this.player_manager.update_player_state(
-      ws.data.player_id,
-      {
-        position: data.position,
-        rotation: data.rotation,
-        velocity: { x: 0, y: 0, z: 0 },
-        last_action: null,
-      },
-      ws.data
-    );
-  }
-
   private handle_player_action(ws: ServerWebSocket<PlayerData>, data: PlayerActionMessage): void {
     this.player_manager.update_player_state(
-      ws.data.player_id,
       {
         position: data.position,
         rotation: data.rotation,
@@ -123,15 +100,17 @@ export class WebSocketHandler {
     );
 
     // Broadcast action to all other players
-    this.player_manager.broadcast_player_action(ws.data.player_id, {
-      type: "player_state",
-      player_id: ws.data.player_id,
-      action: data.action,
-      position: data.position,
-      rotation: data.rotation,
-      velocity: data.velocity,
-      direction: data.direction,
-    });
+    this.player_manager.broadcast_message(
+      {
+        type: "player_state",
+        player_id: ws.data.player_id,
+        action: data.action,
+        position: data.position,
+        rotation: data.rotation,
+        velocity: data.velocity,
+        direction: data.direction,
+      },
+      ws.data.player_id
+    );
   }
-
 }

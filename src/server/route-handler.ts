@@ -35,8 +35,8 @@ export function handle_connect_route(request: Request, server: Server<PlayerData
   const player_id = generate_player_id();
   const player_data: PlayerData = {
     player_id,
-    name: validation.data!.name,
-    character_id: validation.data!.character_id,
+    name: validation.data.name,
+    character_id: validation.data.character_id,
   };
 
   const success = server.upgrade(request, { data: player_data });

@@ -1,13 +1,8 @@
 export class InputManager {
   private keys_pressed: Set<string> = new Set();
-  private canvas: HTMLCanvasElement;
 
   private on_keydown = (e: KeyboardEvent) => this.handle_keydown(e);
   private on_keyup = (e: KeyboardEvent) => this.handle_keyup(e);
-
-  constructor(canvas: HTMLCanvasElement) {
-    this.canvas = canvas;
-  }
 
   init(): void {
     window.addEventListener("keydown", this.on_keydown);

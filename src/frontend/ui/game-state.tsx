@@ -1,17 +1,17 @@
 import React, { useEffect, useRef, useState } from "react";
 import type { PlayerData } from "../networking/websocket-client";
 import { GameScene } from "../game/game-scene";
+import type { WorldSnapshotMessage } from "@/model/multiplayer-types";
 
 interface GameStateProps {
   ws: WebSocket;
-  player_data: PlayerData;
+  world_snapshot: WorldSnapshotMessage;
   on_disconnect: () => void;
 }
 
-export const GameState: React.FC<GameStateProps> = ({ ws, player_data, on_disconnect }) => {
+export const GameState: React.FC<GameStateProps> = ({ ws, world_snapshot, on_disconnect }) => {
   const canvas_ref = useRef<HTMLCanvasElement>(null);
   const game_scene_ref = useRef<GameScene | null>(null);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -37,14 +37,13 @@ export const GameState: React.FC<GameStateProps> = ({ ws, player_data, on_discon
   useEffect(() => {
     if (!canvas_ref.current) return;
 
-    const init_scene = async () => {
+    const init_scene = async (canvas_ref_current: HTMLCanvasElement) => {
       try {
-        const scene = new GameScene(canvas_ref.current!, player_data.character_id, ws);
+        const scene = new GameScene(canvas_ref_current, world_snapshot, ws);
         game_scene_ref.current = scene;
 
         await scene.load_character();
         scene.start();
-        setLoading(false);
       } catch (err) {
         const error_msg = err instanceof Error ? err.message : "Failed to initialize scene";
         setError(error_msg);
@@ -52,7 +51,7 @@ export const GameState: React.FC<GameStateProps> = ({ ws, player_data, on_discon
       }
     };
 
-    init_scene();
+    init_scene(canvas_ref.current);
 
     return () => {
       if (game_scene_ref.current) {
@@ -60,21 +59,13 @@ export const GameState: React.FC<GameStateProps> = ({ ws, player_data, on_discon
         game_scene_ref.current = null;
       }
     };
-  }, [player_data.character_id]);
+  }, [world_snapshot]);
 
   return (
     <div style={styles.container}>
       <canvas ref={canvas_ref} style={styles.canvas} />
 
-      {loading && <div style={styles.loading}>Loading world...</div>}
       {error && <div style={styles.error}>Error: {error}</div>}
-
-      <div style={styles.hud}>
-        <div style={styles.player_info}>
-          <h2>{player_data.name}</h2>
-          <p>Character: {player_data.character_id}</p>
-        </div>
-      </div>
     </div>
   );
 };
@@ -114,18 +105,5 @@ const styles = {
     borderRadius: "8px",
     maxWidth: "300px",
     zIndex: 10,
-  } as React.CSSProperties,
-  hud: {
-    position: "absolute" as const,
-    top: "20px",
-    right: "20px",
-    backgroundColor: "rgba(0, 0, 0, 0.7)",
-    padding: "1rem",
-    borderRadius: "8px",
-    minWidth: "200px",
-    zIndex: 10,
-  } as React.CSSProperties,
-  player_info: {
-    textAlign: "right" as const,
   } as React.CSSProperties,
 };

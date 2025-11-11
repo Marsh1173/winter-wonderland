@@ -11,7 +11,7 @@ export class SnowballEffect {
   /**
    * Show a snowball throw effect - trajectory from start position in given direction
    */
-  show_throw_effect(start_position: { x: number; y: number; z: number }, direction: { x: number; y: number; z: number }): void {
+  show_throw_effect(start_position: { x: number; y: number; z: number }, direction: number): void {
     // Create a simple particle effect
     const particle_geometry = new THREE.BufferGeometry();
     const particle_count = 20;
@@ -20,9 +20,9 @@ export class SnowballEffect {
     // Distribute particles along the throw direction
     for (let i = 0; i < particle_count; i++) {
       const t = i / particle_count;
-      positions[i * 3] = start_position.x + direction.x * t * 5;
-      positions[i * 3 + 1] = start_position.y + direction.y * t * 5;
-      positions[i * 3 + 2] = start_position.z + direction.z * t * 5;
+      positions[i * 3] = start_position.x + Math.cos(direction) * t * 5;
+      positions[i * 3 + 1] = start_position.y;
+      positions[i * 3 + 2] = start_position.z + Math.sin(direction) * t * 5;
     }
 
     particle_geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));

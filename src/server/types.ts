@@ -9,11 +9,12 @@ export interface ConnectParams {
 /**
  * Validation result
  */
-export interface ValidationResult<T> {
-  success: boolean;
-  data?: T;
-  error?: string;
+export type ValidationResult<T> =
+  | {
+      success: false;
+      error: string;
     }
+  | { success: true; data: T };
 
 /**
  * Validate connection parameters

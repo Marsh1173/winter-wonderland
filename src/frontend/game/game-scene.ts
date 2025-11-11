@@ -8,10 +8,9 @@ import { PlayerController } from "./player-controller";
 import { AnimationManager } from "../animation/animation-manager";
 import { RemotePlayerManager } from "./remote-player-manager";
 import { SnowballEffect } from "./snowball-effect";
-import type { ServerMessage } from "@/model/multiplayer-types";
+import type { PlayerActionMessage, ServerMessage, Vec3, WorldSnapshotMessage } from "@/model/multiplayer-types";
 
 export class GameScene {
-  private canvas: HTMLCanvasElement;
   private character_id: string;
 
   private renderer: THREE.WebGLRenderer;
@@ -41,9 +40,8 @@ export class GameScene {
   private throw_target: THREE.Vector3;
   private on_click_handler: ((event: MouseEvent) => void) | null = null;
 
-  constructor(canvas: HTMLCanvasElement, character_id: string, ws?: WebSocket) {
-    this.canvas = canvas;
-    this.character_id = character_id;
+  constructor(private canvas: HTMLCanvasElement, world_snapshot: WorldSnapshotMessage, ws: WebSocket) {
+    this.character_id = world_snapshot.character_id;
     this.loader = new GLTFLoader();
     this.clock = new THREE.Clock();
 
@@ -57,7 +55,7 @@ export class GameScene {
     this.camera = this.setup_camera();
 
     this.physics_manager = new PhysicsManager();
-    this.input_manager = new InputManager(canvas);
+    this.input_manager = new InputManager();
     this.camera_controller = new CameraController(this.camera);
     this.remote_player_manager = new RemotePlayerManager(this.scene);
     this.snowball_effect = new SnowballEffect(this.scene);
@@ -74,6 +72,16 @@ export class GameScene {
     window.addEventListener("resize", () => this.on_window_resize());
     this.on_click_handler = (event: MouseEvent) => this.handle_mouse_click(event);
     window.addEventListener("click", this.on_click_handler);
+
+    world_snapshot.players.forEach((player) => {
+      this.remote_player_manager.add_player(
+        player.player_id,
+        player.name,
+        player.character_id,
+        player.position,
+        player.rotation
+      );
+    });
   }
 
   init_websocket(ws: WebSocket): void {
@@ -95,12 +103,7 @@ export class GameScene {
   }
 
   private setup_camera(): THREE.PerspectiveCamera {
-    const camera = new THREE.PerspectiveCamera(
-      75,
-      window.innerWidth / window.innerHeight,
-      0.1,
-      1000
-    );
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
     camera.position.set(0, 2, 3);
     camera.lookAt(0, 0.5, 0);
     return camera;
@@ -135,6 +138,7 @@ export class GameScene {
   }
 
   async load_character(): Promise<void> {
+    // needs to be in pre-game loader
     return new Promise((resolve, reject) => {
       const model_path = get_character_model_url(this.character_id);
 
@@ -152,13 +156,11 @@ export class GameScene {
             }
           });
 
-          if (gltf.animations.length > 0) {
-            this.animation_clips = gltf.animations;
-            this.mixer = new THREE.AnimationMixer(this.character_model);
-          }
+          this.animation_clips = gltf.animations;
+          this.mixer = new THREE.AnimationMixer(this.character_model);
 
           this.scene.add(this.character_model);
-          this.setup_player_controller();
+          this.setup_player_controller(this.mixer, this.character_model);
           resolve();
         },
         () => {},
@@ -167,69 +169,47 @@ export class GameScene {
     });
   }
 
-  private setup_player_controller(): void {
+  private setup_player_controller(mixer: THREE.AnimationMixer, character_model: THREE.Group): void {
     const player_body = this.physics_manager.create_player(0, 1, 0);
 
-    const animation_manager =
-      this.mixer && this.character_model
-        ? new AnimationManager(this.mixer, this.animation_clips)
-        : null;
+    const animation_manager = new AnimationManager(mixer, this.animation_clips);
 
-    if (animation_manager) {
-      animation_manager.play_idle();
-    }
+    // animation_manager.play_idle(); // Do we need this
 
     this.player_controller = new PlayerController(
       player_body,
-      this.character_model!,
+      character_model,
       this.physics_manager,
       this.input_manager,
       this.camera_controller,
-      animation_manager!,
+      animation_manager,
       this.physics_manager.get_world(),
       (action, position, rotation, velocity, direction) =>
         this.send_player_action(action, position, rotation, velocity, direction)
     );
-
-    // Send initial spawn message
-    this.send_player_spawn(player_body.position);
-  }
-
-  private send_player_spawn(position: any): void {
-    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-      return;
-    }
-
-    this.ws.send(
-      JSON.stringify({
-        type: "player_spawn",
-        position: { x: position.x, y: position.y, z: position.z },
-        rotation: 0,
-      })
-    );
   }
 
   private send_player_action(
-    action: string,
+    action: "move" | "jump" | "throw",
     position: any,
     rotation: number,
-    velocity: any,
-    direction?: any
+    velocity: Vec3,
+    direction?: number
   ): void {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
       return;
     }
 
-    this.ws.send(
-      JSON.stringify({
-        type: "player_action",
-        action,
-        position: { x: position.x, y: position.y, z: position.z },
-        rotation,
-        velocity: velocity ? { x: velocity.x, y: velocity.y, z: velocity.z } : undefined,
-        direction: direction ? { x: direction.x, y: direction.y, z: direction.z } : undefined,
-      })
-    );
+    const action_message: PlayerActionMessage = {
+      type: "player_action",
+      action,
+      position: { x: position.x, y: position.y, z: position.z },
+      rotation,
+      velocity,
+      direction,
+    };
+
+    this.ws.send(JSON.stringify(action_message));
   }
 
   start(): void {
@@ -252,13 +232,12 @@ export class GameScene {
     if (player_body) {
       this.camera_controller.update(player_body);
     }
-
-    // Update remote players with smooth interpolation
-    this.remote_player_manager.update(dt);
-
     if (this.mixer) {
       this.mixer.update(dt);
     }
+
+    // Update remote players with smooth interpolation
+    this.remote_player_manager.update(dt);
 
     this.renderer.render(this.scene, this.camera);
   };
@@ -295,10 +274,8 @@ export class GameScene {
     this.raycaster.ray.intersectPlane(this.ground_plane, this.throw_target);
 
     // Calculate direction from player to target
-    const direction = this.throw_target
-      .clone()
-      .sub(this.character_model.position)
-      .normalize();
+    // const direction = this.throw_target.clone().sub(this.character_model.position).normalize();
+    const direction = 0;
 
     // Show snowball effect locally
     this.snowball_effect.show_throw_effect(this.character_model.position, direction);
@@ -346,9 +323,9 @@ export class GameScene {
               message.player_id,
               message.action,
               message.position,
+              message.velocity,
               message.direction,
-              message.rotation,
-              message.velocity
+              message.rotation
             );
           } else {
             this.remote_player_manager.update_player(
