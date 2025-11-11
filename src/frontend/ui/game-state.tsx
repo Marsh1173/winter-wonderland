@@ -42,6 +42,7 @@ export const GameState: React.FC<GameStateProps> = ({ ws, world_snapshot, on_dis
         const scene = new GameScene(canvas_ref_current, world_snapshot, ws);
         game_scene_ref.current = scene;
 
+        await scene.load_world_environment();
         await scene.load_character();
         scene.start();
       } catch (err) {

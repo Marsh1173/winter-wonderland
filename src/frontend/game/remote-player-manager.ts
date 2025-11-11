@@ -53,7 +53,7 @@ export class RemotePlayerManager {
 
       const model = gltf.scene;
       model.scale.set(1, 1, 1);
-      model.position.set(position.x, position.y, position.z);
+      model.position.set(position.x, position.y - 0.5, position.z);
       model.rotation.y = rotation;
 
       model.traverse((node) => {
@@ -202,8 +202,8 @@ export class RemotePlayerManager {
         remote_player.mixer.update(delta_time);
       }
 
-      // Update the Three.js model
-      remote_player.model.position.set(remote_player.position.x, remote_player.position.y, remote_player.position.z);
+      // Update the Three.js model (offset down by 0.5 to align with sphere collider)
+      remote_player.model.position.set(remote_player.position.x, remote_player.position.y - 0.5, remote_player.position.z);
       remote_player.model.rotation.y = remote_player.rotation;
     }
   }

@@ -122,19 +122,89 @@ export class GameScene {
   }
 
   private setup_floor(): void {
-    const floor_geometry = new THREE.PlaneGeometry(20, 20);
-    const floor_material = new THREE.MeshStandardMaterial({
-      color: 0x404050,
-      roughness: 0.8,
-      metalness: 0.1,
-    });
-    const floor = new THREE.Mesh(floor_geometry, floor_material);
-    floor.rotation.x = -Math.PI / 2;
-    floor.position.y = 0;
-    floor.receiveShadow = true;
-    this.scene.add(floor);
+    // Environment is loaded via load_world_environment()
+    // No default ground plane needed
+  }
 
-    this.physics_manager.create_ground();
+  async load_world_environment(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const loader = new GLTFLoader();
+      loader.load(
+        "/assets/Wonderland.glb",
+        (gltf) => {
+          const wonderland = gltf.scene;
+          // wonderland.position.y = -1;
+
+          // Enable shadows on all meshes
+          wonderland.traverse((node) => {
+            if (node instanceof THREE.Mesh) {
+              node.castShadow = true;
+              node.receiveShadow = true;
+            }
+          });
+
+          this.scene.add(wonderland);
+
+          // Update world matrices before reading transformations
+          wonderland.updateMatrixWorld(true);
+
+          // Create separate physics colliders for each mesh (concave trimesh)
+          wonderland.traverse((node) => {
+            if (node instanceof THREE.Mesh) {
+              const geom = node.geometry.clone();
+
+              // Ensure geometry has position attribute
+              if (!geom.hasAttribute("position")) {
+                return;
+              }
+
+              // Apply world transformation matrix (includes position, rotation, AND scale)
+              const world_matrix = new THREE.Matrix4();
+              world_matrix.copy(node.matrixWorld);
+
+              // Debug: Log scale information to verify Blender scales are being applied
+              const scale = new THREE.Vector3();
+              node.matrixWorld.decompose(new THREE.Vector3(), new THREE.Quaternion(), scale);
+              if (scale.x !== 1 || scale.y !== 1 || scale.z !== 1) {
+                console.log(`Mesh "${node.name}": scale (${scale.x.toFixed(2)}, ${scale.y.toFixed(2)}, ${scale.z.toFixed(2)})`);
+              }
+
+              geom.applyMatrix4(world_matrix);
+
+              // Normalize geometry to only have position attribute for collision
+              const position_attr = geom.getAttribute("position");
+              const normalized_geom = new THREE.BufferGeometry();
+              normalized_geom.setAttribute("position", position_attr);
+
+              // Copy or create indices
+              if (geom.index) {
+                normalized_geom.setIndex(geom.index.clone());
+              } else {
+                const indices = new Uint32Array(position_attr.count);
+                for (let i = 0; i < position_attr.count; i++) {
+                  indices[i] = i;
+                }
+                normalized_geom.setIndex(new THREE.BufferAttribute(indices, 1));
+              }
+
+              // Collision body at origin (geometry already transformed to world space)
+              this.physics_manager.create_environment_collider(
+                normalized_geom,
+                new THREE.Vector3(0, 0, 0),
+                new THREE.Euler(0, 0, 0)
+              );
+            }
+          });
+
+          resolve();
+        },
+        undefined,
+        (error) => {
+          console.error("Failed to load Wonderland.glb:", error);
+          reject(error);
+        }
+      );
+    });
   }
 
   async load_character(): Promise<void> {
@@ -147,7 +217,7 @@ export class GameScene {
         (gltf) => {
           this.character_model = gltf.scene;
           this.character_model.scale.set(1, 1, 1);
-          this.character_model.position.set(0, 1, 0);
+          this.character_model.position.set(0, 0.5, 0);
 
           this.character_model.traverse((node) => {
             if (node instanceof THREE.Mesh) {

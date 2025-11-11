@@ -116,7 +116,12 @@ export class PlayerController {
   }
 
   sync_position(): void {
-    this.character_model.position.copy(this.player_body.position as any);
+    // Offset character model down by sphere radius so sphere center is at character's center of mass
+    this.character_model.position.set(
+      this.player_body.position.x,
+      this.player_body.position.y - 0.5,
+      this.player_body.position.z
+    );
   }
 
   throw_snowball(direction: number): void {
