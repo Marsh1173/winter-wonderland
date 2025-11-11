@@ -11,7 +11,7 @@ export const ChatBubble: React.FC<ChatBubbleProps> = ({ name, text, on_close }) 
   const [text_index, set_text_index] = useState(0);
   const [selected_text, set_selected_text] = useState("");
 
-  const typewriter_speed = 33; // milliseconds per character
+  const typewriter_speed = 20; // milliseconds per character
 
   // Pick a random text from the array on mount
   useEffect(() => {

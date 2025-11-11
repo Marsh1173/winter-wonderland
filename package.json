@@ -4,9 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "bun --hot src/server/index.tsx",
-    "build": "bun build ./src/server/index.tsx --outdir=dist --sourcemap --target=bun --minify --define:process.env.NODE_ENV='\"production\"' --env='BUN_PUBLIC_*'",
-    "start": "NODE_ENV=production bun src/server/index.tsx"
+    "dev": "NODE_ENV=development PORT=3000 bun --hot src/server/index.tsx",
+    "start": "NODE_ENV=production PORT=3006 bun ./src/server/index.tsx"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.6",

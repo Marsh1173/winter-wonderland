@@ -8,10 +8,8 @@ interface CharacterSelectStateProps {
 }
 
 export const CharacterSelectState: React.FC<CharacterSelectStateProps> = ({ on_world_joined }) => {
-  const [name, setName] = useState("Nate");
-  const [selectedCharacter, setSelectedCharacter] = useState<string | null>(
-    CHARACTERS[Math.floor(Math.random() * CHARACTERS.length)]!.id
-  );
+  const [name, setName] = useState("");
+  const [selectedCharacter, setSelectedCharacter] = useState<string | null>();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
