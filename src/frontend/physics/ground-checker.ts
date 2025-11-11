@@ -2,14 +2,20 @@ import * as CANNON from "cannon-es";
 
 /**
  * Robust ground detection using Cannon-ES collision events.
- * Listens to collision contacts and checks if contact normals point upward.
+ * Features:
+ * - Checks if contact normals point upward (configurable threshold)
+ * - Grace period to prevent rapid flickering on varied terrain
  */
 export class GroundChecker {
   private player_body: CANNON.Body;
   private world: CANNON.World;
   private ground_contacts: number = 0;
-  private ground_normal_threshold: number = 0.5;
+  private ground_normal_threshold: number = 0.3; // Lower = accept steeper slopes (0.3 ≈ 72° max)
   private ground_contact_pairs: Set<string> = new Set();
+
+  // Grace period: Stay "grounded" briefly after losing contact to reduce flicker
+  private last_grounded_time: number = 0;
+  private grace_period_ms: number = 100; // 100ms grace period
 
   constructor(player_body: CANNON.Body, world: CANNON.World) {
     this.player_body = player_body;
@@ -22,7 +28,20 @@ export class GroundChecker {
   }
 
   public is_grounded(): boolean {
-    return this.ground_contacts > 0;
+    const has_contacts = this.ground_contacts > 0;
+
+    // Update last grounded time if we have contacts
+    if (has_contacts) {
+      this.last_grounded_time = Date.now();
+    }
+
+    // Check if we're within grace period
+    const time_since_grounded = Date.now() - this.last_grounded_time;
+    const in_grace_period = time_since_grounded < this.grace_period_ms;
+
+    const is_grounded = has_contacts || in_grace_period;
+
+    return is_grounded;
   }
 
   public is_falling(): boolean {
@@ -48,8 +67,8 @@ export class GroundChecker {
 
     let contact = target;
     if (!contact || !contact.ni) {
-      contact = this.world.contacts.find(c =>
-        (c.bi === bodyA && c.bj === bodyB) || (c.bi === bodyB && c.bj === bodyA)
+      contact = this.world.contacts.find(
+        (c) => (c.bi === bodyA && c.bj === bodyB) || (c.bi === bodyB && c.bj === bodyA)
       );
     }
 
@@ -87,5 +106,9 @@ export class GroundChecker {
 
   public set_ground_threshold(threshold: number): void {
     this.ground_normal_threshold = threshold;
+  }
+
+  public set_grace_period(ms: number): void {
+    this.grace_period_ms = ms;
   }
 }

@@ -124,6 +124,8 @@ export class PhysicsManager {
       collisionFilterMask: COLLISION_LAYER.ENVIRONMENT,
     });
     this.player_body.position.set(x, y, z);
+    // Prevent rotation on X and Z axes (no rolling), allow Y-axis rotation for turning
+    this.player_body.angularFactor = new CANNON.Vec3(0, 1, 0);
     this.world.addBody(this.player_body);
     return this.player_body;
   }

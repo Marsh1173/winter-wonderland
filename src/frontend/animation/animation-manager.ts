@@ -10,6 +10,8 @@ export class AnimationManager {
   private current_state: AnimationState = "idle";
   private transition_duration = 0.1;
   private was_grounded = true;
+  private airborne_frames = 0;
+  private grounded_frames = 0;
 
   constructor(mixer: THREE.AnimationMixer, clips: THREE.AnimationClip[]) {
     this.mixer = mixer;
@@ -80,15 +82,31 @@ export class AnimationManager {
 
   update_state(horizontal_velocity: number, vertical_velocity: number, is_grounded: boolean): void {
     const idle_threshold = 0.5;
-    const falling_threshold = -0.5;
+    const falling_threshold = -2.0;
+    const airborne_delay_frames = 3;  // Must be airborne 3 frames before falling
+    const grounded_delay_frames = 2;  // Must be grounded 2 frames before walking
 
+    // Update frame counters with hysteresis to prevent jitter
+    if (is_grounded) {
+      this.grounded_frames = Math.min(this.grounded_frames + 1, grounded_delay_frames);
+      this.airborne_frames = 0;
+    } else {
+      this.airborne_frames = Math.min(this.airborne_frames + 1, airborne_delay_frames);
+      this.grounded_frames = 0;
+    }
+
+    // Use debounced grounded state
+    const effectively_grounded = this.grounded_frames >= grounded_delay_frames;
+    const effectively_airborne = this.airborne_frames >= airborne_delay_frames;
+
+    // State transitions with debouncing
     if (this.was_grounded && !is_grounded) {
       this.play_jump();
-    } else if (!is_grounded) {
+    } else if (effectively_airborne) {
       if (vertical_velocity < falling_threshold) {
         this.play_fall();
       }
-    } else if (is_grounded) {
+    } else if (effectively_grounded) {
       if (Math.abs(horizontal_velocity) > idle_threshold) {
         this.play_walk();
       } else {

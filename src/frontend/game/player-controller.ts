@@ -49,6 +49,7 @@ export class PlayerController {
   update(): void {
     this.handle_jump();
     this.update_movement();
+    this.clamp_slope_velocity();
     this.update_rotation();
     this.update_animations();
   }
@@ -113,6 +114,13 @@ export class PlayerController {
     const vertical_velocity = velocity.y;
 
     this.animation_manager.update_state(horizontal_velocity, vertical_velocity, this.ground_checker.is_grounded());
+  }
+
+  private clamp_slope_velocity(): void {
+    // When grounded on slopes, prevent excessive downward velocity to reduce bouncing
+    if (this.ground_checker.is_grounded() && this.player_body.velocity.y < -1.0) {
+      this.player_body.velocity.y = Math.max(this.player_body.velocity.y, -1.0);
+    }
   }
 
   sync_position(): void {

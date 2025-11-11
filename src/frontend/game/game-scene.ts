@@ -97,8 +97,10 @@ export class GameScene {
       alpha: true,
     });
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setClearColor(0x191922);
+    renderer.setClearColor(0x1f2a44);
     renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFShadowMap;
     return renderer;
   }
 
@@ -110,15 +112,30 @@ export class GameScene {
   }
 
   private setup_lights(): void {
-    const ambient = new THREE.AmbientLight(0xffffff, 0.6);
+    const ambient = new THREE.AmbientLight(0xffffff, 0.3);
     this.scene.add(ambient);
 
-    const directional = new THREE.DirectionalLight(0xffffff, 0.8);
-    directional.position.set(5, 10, 5);
+    const directional = new THREE.DirectionalLight(0xfff5a8, 1); // White-yellow
+    directional.position.set(20, 16, 6);
+    directional.intensity = 1.6;
     directional.castShadow = true;
-    directional.shadow.mapSize.width = 2048;
-    directional.shadow.mapSize.height = 2048;
+    directional.shadow.mapSize.width = 4096;
+    directional.shadow.mapSize.height = 4096;
+    // Configure shadow camera to cover the entire environment
+    directional.shadow.camera.left = -100;
+    directional.shadow.camera.right = 150;
+    directional.shadow.camera.top = 100;
+    directional.shadow.camera.bottom = -100;
+    directional.shadow.camera.near = 0.1;
+    directional.shadow.camera.far = 200;
+    // Reduce bias to prevent artifacts on angled surfaces
+    directional.shadow.bias = -0.0005;
+    directional.shadow.normalBias = 0.02;
     this.scene.add(directional);
+
+    const backlight = new THREE.DirectionalLight(0x5776ff, 0.5);
+    backlight.position.set(-10, 5, 3);
+    this.scene.add(backlight);
   }
 
   private setup_floor(): void {
@@ -165,9 +182,6 @@ export class GameScene {
               // Debug: Log scale information to verify Blender scales are being applied
               const scale = new THREE.Vector3();
               node.matrixWorld.decompose(new THREE.Vector3(), new THREE.Quaternion(), scale);
-              if (scale.x !== 1 || scale.y !== 1 || scale.z !== 1) {
-                console.log(`Mesh "${node.name}": scale (${scale.x.toFixed(2)}, ${scale.y.toFixed(2)}, ${scale.z.toFixed(2)})`);
-              }
 
               geom.applyMatrix4(world_matrix);
 
