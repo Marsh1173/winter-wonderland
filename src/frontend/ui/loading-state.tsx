@@ -1,4 +1,4 @@
-import { CHARACTERS, get_character_preview_url } from "@/model/characters";
+import { CHARACTERS, get_character_model_url, get_character_preview_url } from "@/model/characters";
 import React, { useState, useEffect } from "react";
 
 interface LoadingStateProps {
@@ -41,8 +41,14 @@ export const LoadingState: React.FC<LoadingStateProps> = ({ on_loading_complete 
         </div>
       </div>
       {CHARACTERS.map((character) => {
-        return <link rel="preload" as="image" key={character.id} href={get_character_preview_url(character)}></link>;
+        return (
+          <div key={character.id}>
+            <link rel="prefetch" href={get_character_preview_url(character)}></link>
+            <link rel="prefetch" href={get_character_model_url(character.id)}></link>
+          </div>
+        );
       })}
+      <link rel="prefetch" href={"/assets/Wonderland.glb"}></link>
     </div>
   );
 };
