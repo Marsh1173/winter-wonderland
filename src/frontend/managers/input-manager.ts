@@ -1,5 +1,6 @@
 export class InputManager {
   private keys_pressed: Set<string> = new Set();
+  private keys_pressed_last_frame: Set<string> = new Set();
 
   private on_keydown = (e: KeyboardEvent) => this.handle_keydown(e);
   private on_keyup = (e: KeyboardEvent) => this.handle_keyup(e);
@@ -19,6 +20,15 @@ export class InputManager {
 
   is_key_pressed(key: string): boolean {
     return this.keys_pressed.has(key.toLowerCase());
+  }
+
+  was_key_just_pressed(key: string): boolean {
+    const lower_key = key.toLowerCase();
+    return this.keys_pressed.has(lower_key) && !this.keys_pressed_last_frame.has(lower_key);
+  }
+
+  update_frame(): void {
+    this.keys_pressed_last_frame = new Set(this.keys_pressed);
   }
 
   dispose(): void {

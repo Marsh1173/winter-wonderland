@@ -2,6 +2,9 @@ import React, { useEffect, useRef, useState } from "react";
 import type { PlayerData } from "../networking/websocket-client";
 import { GameScene } from "../game/game-scene";
 import type { WorldSnapshotMessage } from "@/model/multiplayer-types";
+import { InteractablePrompt } from "./interactable-prompt";
+import { ChatBubble } from "./chat-bubble";
+import type { Interactable } from "../game/interactables-manager";
 
 interface GameStateProps {
   ws: WebSocket;
@@ -13,6 +16,8 @@ export const GameState: React.FC<GameStateProps> = ({ ws, world_snapshot, on_dis
   const canvas_ref = useRef<HTMLCanvasElement>(null);
   const game_scene_ref = useRef<GameScene | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [nearby_interactable, set_nearby_interactable] = useState<Interactable | null>(null);
+  const [active_chat, set_active_chat] = useState<Interactable | null>(null);
 
   useEffect(() => {
     const handleClose = () => {
@@ -60,13 +65,59 @@ export const GameState: React.FC<GameStateProps> = ({ ws, world_snapshot, on_dis
         game_scene_ref.current = null;
       }
     };
-  }, [world_snapshot]);
+  }, [world_snapshot, ws]);
+
+  // Poll for nearby interactables and handle F key input
+  useEffect(() => {
+    const update_interval = setInterval(() => {
+      if (!game_scene_ref.current) return;
+
+      const nearby = game_scene_ref.current.get_nearby_interactable();
+      set_nearby_interactable(nearby);
+
+      // If player moved away from interactable, close chat
+      if (active_chat && !nearby) {
+        set_active_chat(null);
+      } else if (active_chat && nearby && active_chat.id !== nearby.id) {
+        // If player is near a different interactable, close current chat
+        set_active_chat(null);
+      }
+    }, 16); // Update ~60 times per second
+
+    return () => clearInterval(update_interval);
+  }, [active_chat]);
+
+  // Handle F key press for interaction
+  useEffect(() => {
+    const handle_keydown = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() === "f") {
+        if (nearby_interactable && !active_chat) {
+          set_active_chat(nearby_interactable);
+        } else if (active_chat) {
+          set_active_chat(null);
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handle_keydown);
+    return () => window.removeEventListener("keydown", handle_keydown);
+  }, [nearby_interactable, active_chat]);
 
   return (
     <div style={styles.container}>
       <canvas ref={canvas_ref} style={styles.canvas} />
 
       {error && <div style={styles.error}>Error: {error}</div>}
+
+      {nearby_interactable && !active_chat && <InteractablePrompt name={nearby_interactable.name} />}
+
+      {active_chat && (
+        <ChatBubble
+          name={active_chat.name}
+          text={active_chat.text}
+          on_close={() => set_active_chat(null)}
+        />
+      )}
     </div>
   );
 };

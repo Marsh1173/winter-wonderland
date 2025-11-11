@@ -9,6 +9,7 @@ import { AnimationManager } from "../animation/animation-manager";
 import { RemotePlayerManager } from "./remote-player-manager";
 import { SnowballEffect } from "./snowball-effect";
 import { SnowEffect } from "./snow-effect";
+import { InteractablesManager } from "./interactables-manager";
 import type { PlayerActionMessage, ServerMessage, Vec3, WorldSnapshotMessage } from "@/model/multiplayer-types";
 
 export class GameScene {
@@ -32,6 +33,7 @@ export class GameScene {
   private remote_player_manager: RemotePlayerManager;
   private snowball_effect: SnowballEffect;
   private snow_effect: SnowEffect;
+  private interactables_manager: InteractablesManager;
 
   private ws: WebSocket | null = null;
   private on_message_handler: ((event: MessageEvent) => void) | null = null;
@@ -62,6 +64,8 @@ export class GameScene {
     this.remote_player_manager = new RemotePlayerManager(this.scene);
     this.snowball_effect = new SnowballEffect(this.scene);
     this.snow_effect = new SnowEffect(this.scene, this.camera);
+
+    this.interactables_manager = new InteractablesManager();
 
     this.raycaster = new THREE.Raycaster();
     this.mouse = new THREE.Vector2();
@@ -277,6 +281,8 @@ export class GameScene {
       (action, position, rotation, velocity, direction) =>
         this.send_player_action(action, position, rotation, velocity, direction)
     );
+
+    this.player_controller.set_interactables_manager(this.interactables_manager);
   }
 
   private send_player_action(
@@ -302,6 +308,13 @@ export class GameScene {
     this.ws.send(JSON.stringify(action_message));
   }
 
+  get_nearby_interactable() {
+    if (!this.player_controller) {
+      return null;
+    }
+    return this.player_controller.get_nearby_interactable();
+  }
+
   start(): void {
     this.animate();
   }
@@ -310,6 +323,9 @@ export class GameScene {
     this.animation_id = requestAnimationFrame(this.animate);
 
     const dt = this.clock.getDelta();
+
+    // Update input frame state for key press tracking
+    this.input_manager.update_frame();
 
     this.physics_manager.step(dt);
 
@@ -355,6 +371,16 @@ export class GameScene {
     if (!this.character_model || !this.player_controller) {
       return;
     }
+
+    // // Log player position for interactable coordinate setup
+    // const player_body = this.physics_manager.get_player_body();
+    // if (player_body) {
+    //   console.log(
+    //     `Player position: new CANNON.Vec3(${player_body.position.x.toFixed(2)}, ${player_body.position.y.toFixed(
+    //       2
+    //     )}, ${player_body.position.z.toFixed(2)})`
+    //   );
+    // }
 
     // Convert mouse position to normalized device coordinates
     this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;

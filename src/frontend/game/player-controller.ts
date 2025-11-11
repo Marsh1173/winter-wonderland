@@ -5,6 +5,7 @@ import { CameraController } from "../managers/camera-controller";
 import { PhysicsManager } from "../physics/physics-manager";
 import { AnimationManager } from "../animation/animation-manager";
 import { GroundChecker } from "../physics/ground-checker";
+import { InteractablesManager, type Interactable } from "./interactables-manager";
 
 export class PlayerController {
   private player_body: CANNON.Body;
@@ -13,6 +14,8 @@ export class PlayerController {
   private camera_controller: CameraController;
   private animation_manager: AnimationManager;
   private ground_checker: GroundChecker;
+  private interactables_manager: InteractablesManager | null = null;
+  private nearby_interactable: Interactable | null = null;
 
   private movement_speed = 5;
   private jump_speed = 8;
@@ -52,6 +55,7 @@ export class PlayerController {
     this.clamp_slope_velocity();
     this.update_rotation();
     this.update_animations();
+    this.update_nearby_interactable();
   }
 
   private handle_jump(): void {
@@ -140,5 +144,19 @@ export class PlayerController {
       this.player_body.velocity,
       direction
     );
+  }
+
+  set_interactables_manager(manager: InteractablesManager): void {
+    this.interactables_manager = manager;
+  }
+
+  private update_nearby_interactable(): void {
+    if (this.interactables_manager) {
+      this.nearby_interactable = this.interactables_manager.get_nearby_interactable(this.player_body.position);
+    }
+  }
+
+  get_nearby_interactable(): Interactable | null {
+    return this.nearby_interactable;
   }
 }
