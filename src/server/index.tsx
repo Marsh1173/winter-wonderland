@@ -10,6 +10,7 @@ const ws_handler = new WebSocketHandler(player_manager);
 
 const server = serve<PlayerData>({
   hostname: SERVER_CONFIG.hostname,
+  port: SERVER_CONFIG.port,
 
   routes: {
     "/": index,
