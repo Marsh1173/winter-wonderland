@@ -17,9 +17,9 @@ export const CHARACTERS: Character[] = [
 ];
 
 export function get_character_preview_url(character: Character): string {
-  return `/assets/kenney_mini-characters/Previews/character-${character.id}.png`;
+  return `/assets/character_previews/character-${character.id}.png`;
 }
 
 export function get_character_model_url(character_id: string): string {
-  return `/assets/kenney_mini-characters/Models/GLB format/character-${character_id}.glb`;
+  return `/assets/character_models/character-${character_id}.glb`;
 }
